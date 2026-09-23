@@ -4,6 +4,11 @@ import { useEffect, useState } from 'react'
 import { getQuestionBySlugOrId, type QuestionWithOptions } from '@/lib/questions'
 import { VoteButtons } from '@/components/questions/VoteButtons'
 
+console.log('ENV CHECK:', {
+  url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  keyExists: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+})
+
 export default function ProbarVotoPage() {
   const questionId = 3
   const [question, setQuestion] = useState<QuestionWithOptions | null>(null)
