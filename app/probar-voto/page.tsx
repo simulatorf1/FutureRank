@@ -1,11 +1,30 @@
-import { getQuestionBySlugOrId } from '@/lib/questions'
+'use client'
+
+import { useEffect, useState } from 'react'
+import { getQuestionBySlugOrId, type QuestionWithOptions } from '@/lib/questions'
 import { VoteButtons } from '@/components/questions/VoteButtons'
 
-export default async function ProbarVotoPage() {
-  // Cambia este ID por el de tu pregunta de prueba
+export default function ProbarVotoPage() {
   const questionId = 3
+  const [question, setQuestion] = useState<QuestionWithOptions | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const question = await getQuestionBySlugOrId(questionId)
+  useEffect(() => {
+    async function load() {
+      const q = await getQuestionBySlugOrId(questionId)
+      setQuestion(q)
+      setLoading(false)
+    }
+    load()
+  }, [])
+
+  if (loading) {
+    return (
+      <main className="mx-auto max-w-2xl px-4 py-12">
+        <p className="text-white/60">Cargando pregunta...</p>
+      </main>
+    )
+  }
 
   if (!question) {
     return (
