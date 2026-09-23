@@ -16,7 +16,9 @@ export default function ProbarVotoPage() {
 
   useEffect(() => {
     async function load() {
+      console.log('Cargando pregunta id:', questionId)
       const q = await getQuestionBySlugOrId(questionId)
+      console.log('Resultado:', q)
       setQuestion(q)
       setLoading(false)
     }
