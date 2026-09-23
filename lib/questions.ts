@@ -22,6 +22,8 @@ export async function getQuestionBySlugOrId(id: number): Promise<QuestionWithOpt
     `)
     .eq('id', id)
     .single()
+  console.log('SUPABASE QUERY ERROR:', error)
+  console.log('SUPABASE QUERY DATA:', question)
 
   if (error || !question) return null
 
