@@ -21,16 +21,22 @@ export function VoteButtons({
 
   useEffect(() => {
     async function load() {
-      const [existingVote, currentResults] = await Promise.all([
-        getUserVoteForQuestion(questionId),
-        getVoteResults(questionId),
-      ])
-      setUserVote(existingVote)
-      setResults(currentResults)
-      setInitialized(true)
+      try {
+        const [existingVote, currentResults] = await Promise.all([
+          getUserVoteForQuestion(questionId),
+          getVoteResults(questionId),
+        ])
+        setUserVote(existingVote)
+        setResults(currentResults)
+      } catch (e) {
+        console.error('VOTEBUTTONS load error:', e)
+      } finally {
+        setInitialized(true)
+      }
     }
     load()
   }, [questionId])
+
 
 
   const handleVote = async (optionId: number) => {
