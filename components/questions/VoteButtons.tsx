@@ -32,18 +32,25 @@ export function VoteButtons({
     load()
   }, [questionId])
 
-  const handleVote = async (optionId: number) => {
-    if (userVote !== null || loading) return
 
+  const handleVote = async (optionId: number) => {
+    console.log('HANDLE VOTE: inicio', { optionId, userVote, loading })
+  
+    if (userVote !== null || loading) {
+      console.log('HANDLE VOTE: bloqueado por userVote o loading', { userVote, loading })
+      return
+    }
+  
     setLoading(true)
     setError(null)
-
+  
     try {
+      console.log('HANDLE VOTE: llamando castVote')
       const result = await castVote(questionId, optionId)
-
+      console.log('HANDLE VOTE: resultado', result)
+  
       if (!result.success) {
         if (result.reason === 'already_voted') {
-          // Refrescar para mostrar el voto existente
           const [existing, currentResults] = await Promise.all([
             getUserVoteForQuestion(questionId),
             getVoteResults(questionId),
@@ -53,13 +60,13 @@ export function VoteButtons({
         }
         return
       }
-
+  
       setUserVote(optionId)
       const updated = await getVoteResults(questionId)
       setResults(updated)
     } catch (e: any) {
+      console.error('HANDLE VOTE: error', e)
       setError('No se pudo registrar el voto. Inténtalo de nuevo.')
-      console.error(e)
     } finally {
       setLoading(false)
     }
