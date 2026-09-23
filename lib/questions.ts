@@ -76,14 +76,15 @@ export async function getVoteResults(questionId: number): Promise<VoteResult[]> 
 
 export async function getUserVoteForQuestion(questionId: number): Promise<number | null> {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) return null
 
   const { data } = await supabase
     .from('votes')
     .select('option_id')
     .eq('question_id', questionId)
-    .eq('user_id', user.id)
+    .eq('user_id', session.user.id)
     .maybeSingle()
 
   return data?.option_id ?? null
