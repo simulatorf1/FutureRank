@@ -17,13 +17,11 @@ export async function getQuestionBySlugOrId(id: number): Promise<QuestionWithOpt
     .from('questions')
     .select(`
       id, title, description, resolution_date, status,
-      categories(name),
-      question_options(id, text, position)
+      categories!questions_category_id_fkey(name),
+      question_options!question_options_question_id_fkey(id, text, position)
     `)
     .eq('id', id)
     .single()
-  console.log('SUPABASE QUERY ERROR:', error)
-  console.log('SUPABASE QUERY DATA:', question)
 
   if (error || !question) return null
 
