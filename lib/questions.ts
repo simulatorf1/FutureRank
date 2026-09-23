@@ -17,8 +17,8 @@ export async function getQuestionBySlugOrId(id: number): Promise<QuestionWithOpt
     .from('questions')
     .select(`
       id, title, description, resolution_date, status,
-      category:categories!inner(name),
-      options:question_options(id, text, position)
+      categories(name),
+      question_options(id, text, position)
     `)
     .eq('id', id)
     .single()
@@ -31,8 +31,8 @@ export async function getQuestionBySlugOrId(id: number): Promise<QuestionWithOpt
     description: question.description,
     resolution_date: question.resolution_date,
     status: question.status,
-    category_name: (question.category as any)?.name ?? '',
-    options: (question.options as any[])?.sort((a, b) => a.position - b.position) ?? [],
+    category_name: (question.categories as any)?.name ?? '',
+    options: (question.question_options as any[])?.sort((a, b) => a.position - b.position) ?? [],
   }
 }
 
