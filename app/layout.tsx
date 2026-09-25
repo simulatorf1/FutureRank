@@ -9,9 +9,17 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "FutureRank",
-  description: "Red social de predicciones y reputación",
-};
+  title: {
+    default: 'FutureRank — Demuestra quién predice mejor el futuro',
+    template: '%s | FutureRank',
+  },
+  description: 'Red social de predicciones y reputación. Vota, debate y construye tu historial de aciertos sin dinero ni apuestas.',
+  openGraph: {
+    title: 'FutureRank',
+    description: 'Vota predicciones sobre el futuro y construye tu reputación.',
+    type: 'website',
+  },
+}
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
