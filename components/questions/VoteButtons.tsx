@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { castVote } from '@/lib/vote'
 import { getVoteResults, getUserVoteForQuestion, type VoteResult } from '@/lib/questions'
+import { AnonymousConversionPrompt } from '@/components/auth/AnonymousConversionPrompt'
 
 type Option = { id: number; text: string; position: number }
 
@@ -18,6 +19,7 @@ export function VoteButtons({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [initialized, setInitialized] = useState(false)
+  const [showConversion, setShowConversion] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -37,24 +39,15 @@ export function VoteButtons({
     load()
   }, [questionId])
 
-
-
   const handleVote = async (optionId: number) => {
-    console.log('HANDLE VOTE: inicio', { optionId, userVote, loading })
-  
-    if (userVote !== null || loading) {
-      console.log('HANDLE VOTE: bloqueado por userVote o loading', { userVote, loading })
-      return
-    }
-  
+    if (userVote !== null || loading) return
+
     setLoading(true)
     setError(null)
-  
+
     try {
-      console.log('HANDLE VOTE: llamando castVote')
       const result = await castVote(questionId, optionId)
-      console.log('HANDLE VOTE: resultado', result)
-  
+
       if (!result.success) {
         if (result.reason === 'already_voted') {
           const [existing, currentResults] = await Promise.all([
@@ -68,13 +61,19 @@ export function VoteButtons({
         }
         return
       }
-  
+
       setUserVote(optionId)
       const updated = await getVoteResults(questionId)
       setResults(updated)
+
+      if (result.isAnonymous) {
+        const voted = Number(localStorage.getItem('anon_votes') ?? '0') + 1
+        localStorage.setItem('anon_votes', String(voted))
+        if (voted >= 3) setShowConversion(true)
+      }
     } catch (e: any) {
-      console.error('HANDLE VOTE: error', e)
       setError('No se pudo registrar el voto. Inténtalo de nuevo.')
+      console.error(e)
     } finally {
       setLoading(false)
     }
@@ -134,6 +133,14 @@ export function VoteButtons({
       {loading && <p className="text-xs text-white/40">Registrando voto...</p>}
 
       {error && <p className="text-xs text-red-400">{error}</p>}
+
+      {showConversion && (
+        <div className="mt-4">
+          <AnonymousConversionPrompt
+            voteCount={Number(localStorage.getItem('anon_votes') ?? '0')}
+          />
+        </div>
+      )}
     </div>
   )
 }
