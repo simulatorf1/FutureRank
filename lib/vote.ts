@@ -4,9 +4,24 @@ import { ensureAnonymousSession } from './auth-anonymous'
 export async function castVote(questionId: number, optionId: number) {
   const supabase = createClient()
 
+  // 0. Verificar que la pregunta sigue abierta
+  const { data: question, error: questionError } = await supabase
+    .from('questions')
+    .select('status')
+    .eq('id', questionId)
+    .single()
+
+  if (questionError || !question) {
+    throw new Error('No se encontró la pregunta')
+  }
+
+  if (question.status !== 'open') {
+    return { success: false, reason: 'closed', isAnonymous: false }
+  }
+
   // 1. Asegurar sesión (anónima o registrada)
   const { session, isAnonymous } = await ensureAnonymousSession()
-  
+
   if (!session) {
     throw new Error('No se pudo crear la sesión')
   }
