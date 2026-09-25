@@ -4,9 +4,9 @@ import { Suspense, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Header } from '@/components/layout/Header'
+import { Footer } from '@/components/layout/Footer'
 import { VoteButtons } from '@/components/questions/VoteButtons'
 import { CommentSection } from '@/components/comments/CommentSection'
-import { Footer } from '@/components/layout/Footer'
 import { getQuestionBySlugOrId, type QuestionWithOptions } from '@/lib/questions'
 
 function QuestionContent() {
@@ -55,7 +55,6 @@ function QuestionContent() {
       <VoteButtons questionId={question.id} options={question.options} />
       <CommentSection questionId={question.id} />
     </main>
-    <Footer />
   )
 }
 
@@ -63,13 +62,16 @@ export default function QuestionPage() {
   return (
     <>
       <Header />
-      <Suspense fallback={
-        <main className="mx-auto max-w-2xl px-4 py-12">
-          <p className="text-white/60">Cargando...</p>
-        </main>
-      }>
+      <Suspense
+        fallback={
+          <main className="mx-auto max-w-2xl px-4 py-12">
+            <p className="text-white/60">Cargando...</p>
+          </main>
+        }
+      >
         <QuestionContent />
       </Suspense>
+      <Footer />
     </>
   )
 }
