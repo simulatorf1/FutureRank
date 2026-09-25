@@ -4,10 +4,10 @@ import { ensureAnonymousSession } from './auth-anonymous'
 export async function castVote(questionId: number, optionId: number) {
   const supabase = createClient()
 
-  // 0. Verificar que la pregunta sigue abierta
+  // 0. Verificar que la pregunta existe, está abierta y no ha vencido
   const { data: question, error: questionError } = await supabase
     .from('questions')
-    .select('status')
+    .select('status, resolution_date')
     .eq('id', questionId)
     .single()
 
@@ -17,6 +17,10 @@ export async function castVote(questionId: number, optionId: number) {
 
   if (question.status !== 'open') {
     return { success: false, reason: 'closed', isAnonymous: false }
+  }
+
+  if (new Date(question.resolution_date) < new Date()) {
+    return { success: false, reason: 'expired', isAnonymous: false }
   }
 
   // 1. Asegurar sesión (anónima o registrada)
@@ -36,7 +40,6 @@ export async function castVote(questionId: number, optionId: number) {
     })
 
   if (error) {
-    // Si es voto duplicado, no es un error grave: el usuario ya votó
     if (error.code === '23505') {
       return { success: false, reason: 'already_voted', isAnonymous }
     }
