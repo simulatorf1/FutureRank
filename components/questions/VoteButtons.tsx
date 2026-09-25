@@ -68,10 +68,9 @@ export function VoteButtons({
       const updated = await getVoteResults(questionId)
       setResults(updated)
 
+      // Si el usuario es anónimo, mostrar el aviso de registro inmediatamente
       if (result.isAnonymous) {
-        const voted = Number(localStorage.getItem('anon_votes') ?? '0') + 1
-        localStorage.setItem('anon_votes', String(voted))
-        if (voted >= 3) setShowConversion(true)
+        setShowConversion(true)
       }
     } catch (e: any) {
       setError('No se pudo registrar el voto. Inténtalo de nuevo.')
@@ -138,9 +137,7 @@ export function VoteButtons({
 
       {showConversion && (
         <div className="mt-4">
-          <AnonymousConversionPrompt
-            voteCount={Number(localStorage.getItem('anon_votes') ?? '0')}
-          />
+          <AnonymousConversionPrompt />
         </div>
       )}
     </div>
