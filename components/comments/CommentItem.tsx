@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import { voteComment } from '@/lib/questions'
+import { useState, useEffect } from 'react'
+import { voteComment, deleteComment } from '@/lib/questions'
+import { createClient } from '@/lib/supabase/client'
 import { CommentForm } from './CommentForm'
 import type { CommentWithScore } from '@/lib/questions'
 
@@ -34,6 +35,16 @@ export function CommentItem({
   const [showReply, setShowReply] = useState(false)
   const [localVote, setLocalVote] = useState<number | null>(comment.user_vote)
   const [localScore, setLocalScore] = useState(comment.score)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setCurrentUserId(session?.user.id ?? null)
+    })
+  }, [])
+
+  const isOwner = currentUserId === comment.user_id
 
   const replies = allComments
     .filter((c) => c.parent_id === comment.id)
@@ -48,14 +59,23 @@ export function CommentItem({
 
     try {
       if (newVote === null) {
-        // No implementamos borrado de voto en el MVP; simplemente ignoramos
         return
       }
       await voteComment(comment.id, value)
     } catch (err) {
-      // Revertir en caso de error
       setLocalVote(localVote)
       setLocalScore(comment.score)
+      console.error(err)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!confirm('¿Eliminar este comentario?')) return
+    try {
+      await deleteComment(comment.id)
+      onRefresh()
+    } catch (err) {
+      console.error(err)
     }
   }
 
@@ -99,6 +119,14 @@ export function CommentItem({
           >
             {showReply ? 'Cancelar' : 'Responder'}
           </button>
+          {isOwner && (
+            <button
+              onClick={handleDelete}
+              className="text-white/40 transition hover:text-red-400"
+            >
+              Eliminar
+            </button>
+          )}
         </div>
 
         {showReply && (
