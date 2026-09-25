@@ -196,3 +196,115 @@ export async function getTopCategories(): Promise<{ id: number; name: string; sl
   if (error || !data) return []
   return data
 }
+export type CommentWithScore = {
+  id: number
+  question_id: number
+  user_id: string
+  parent_id: number | null
+  body: string
+  created_at: string
+  updated_at: string
+  score: number
+  total_votes: number
+  author_display_name: string
+  user_vote: number | null
+}
+
+export async function getComments(questionId: number): Promise<CommentWithScore[]> {
+  const supabase = createClient()
+
+  const { data: comments, error } = await supabase
+    .from('comments_with_score')
+    .select('*')
+    .eq('question_id', questionId)
+    .order('created_at', { ascending: true })
+
+  if (error || !comments) return []
+
+  // Obtener nombres de autor y votos del usuario actual
+  const userIds = Array.from(new Set(comments.map((c: any) => c.user_id)))
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, display_name, username')
+    .in('id', userIds)
+
+  const { data: { session } } = await supabase.auth.getSession()
+  let userVotes: Record<number, number> = {}
+
+  if (session?.user) {
+    const { data: votes } = await supabase
+      .from('comment_votes')
+      .select('comment_id, value')
+      .eq('user_id', session.user.id)
+      .in('comment_id', comments.map((c: any) => c.id))
+
+    userVotes = Object.fromEntries((votes ?? []).map((v) => [v.comment_id, v.value]))
+  }
+
+  const profileMap = new Map((profiles ?? []).map((p: any) => [p.id, p]))
+
+  return comments.map((c: any) => ({
+    id: c.id,
+    question_id: c.question_id,
+    user_id: c.user_id,
+    parent_id: c.parent_id,
+    body: c.body,
+    created_at: c.created_at,
+    updated_at: c.updated_at,
+    score: c.score ?? 0,
+    total_votes: c.total_votes ?? 0,
+    author_display_name: profileMap.get(c.user_id)?.display_name ?? 'Anónimo',
+    user_vote: userVotes[c.id] ?? null,
+  }))
+}
+
+export async function createComment(questionId: number, body: string, parentId: number | null = null) {
+  const supabase = createClient()
+
+  // Asegurar sesión (anónima o registrada)
+  const { data: { session } } = await supabase.auth.getSession()
+  let userId = session?.user.id
+
+  if (!userId) {
+    const { data, error } = await supabase.auth.signInAnonymously()
+    if (error || !data.user) throw new Error('No se pudo crear la sesión')
+    userId = data.user.id
+  }
+
+  const { data, error } = await supabase
+    .from('comments')
+    .insert({
+      question_id: questionId,
+      user_id: userId,
+      parent_id: parentId,
+      body,
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function voteComment(commentId: number, value: 1 | -1) {
+  const supabase = createClient()
+
+  const { data: { session } } = await supabase.auth.getSession()
+  let userId = session?.user.id
+
+  if (!userId) {
+    const { data, error } = await supabase.auth.signInAnonymously()
+    if (error || !data.user) throw new Error('No se pudo crear la sesión')
+    userId = data.user.id
+  }
+
+  // Intentar insertar. Si ya existe, actualizar.
+  const { error } = await supabase
+    .from('comment_votes')
+    .upsert(
+      { comment_id: commentId, user_id: userId, value },
+      { onConflict: 'user_id,comment_id' }
+    )
+
+  if (error) throw error
+}
