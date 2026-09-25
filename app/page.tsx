@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Header } from '@/components/layout/Header'
 import { CategoryBar } from '@/components/categories/CategoryBar'
 import { QuestionCard } from '@/components/questions/QuestionCard'
+import { Footer } from '@/components/layout/Footer'
 import {
   getFeaturedQuestions,
   getTrendingQuestions,
@@ -124,6 +125,7 @@ export default function HomePage() {
           </>
         )}
       </main>
+      <Footer />
     </>
   )
 }
