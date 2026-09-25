@@ -4,28 +4,32 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { resolveQuestion } from './actions'
 
-type ClosedQuestion = {
+type PendingQuestion = {
   id: number
   title: string
   resolution_date: string
+  status: string
   options: { id: number; text: string }[]
 }
 
 export default function AdminResolvePage() {
-  const [questions, setQuestions] = useState<ClosedQuestion[]>([])
+  const [questions, setQuestions] = useState<PendingQuestion[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
       const supabase = createClient()
+      const now = new Date().toISOString()
+
+      // Trae preguntas cerradas O vencidas que sigan abiertas
       const { data } = await supabase
         .from('questions')
         .select(`
-          id, title, resolution_date,
-          question_options(id, text)
+          id, title, resolution_date, status,
+          question_options!question_options_question_id_fkey(id, text)
         `)
-        .eq('status', 'closed')
+        .or(`status.eq.closed,and(status.eq.open,resolution_date.lt.${now})`)
         .order('resolution_date')
 
       setQuestions(
@@ -33,6 +37,7 @@ export default function AdminResolvePage() {
           id: q.id,
           title: q.title,
           resolution_date: q.resolution_date,
+          status: q.status,
           options: q.question_options ?? [],
         }))
       )
@@ -43,7 +48,7 @@ export default function AdminResolvePage() {
 
   const handleSubmit = async (formData: FormData) => {
     const result = await resolveQuestion(formData)
-    if (result.error) {
+    if (result?.error) {
       setMessage(`Error: ${result.error}`)
     } else {
       setMessage('Pregunta resuelta correctamente')
@@ -55,7 +60,7 @@ export default function AdminResolvePage() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">
-      <h1 className="mb-6 text-2xl font-semibold">Resolver preguntas cerradas</h1>
+      <h1 className="mb-6 text-2xl font-semibold">Resolver preguntas</h1>
 
       {message && (
         <div className="mb-4 rounded-lg border border-white/10 bg-white/5 p-3 text-sm">
@@ -64,12 +69,21 @@ export default function AdminResolvePage() {
       )}
 
       {questions.length === 0 ? (
-        <p className="text-white/60">No hay preguntas cerradas pendientes de resolver.</p>
+        <p className="text-white/60">
+          No hay preguntas pendientes de resolver.
+        </p>
       ) : (
         <div className="space-y-6">
           {questions.map((q) => (
-            <form key={q.id} action={handleSubmit} className="rounded-lg border border-white/10 p-4">
+            <form
+              key={q.id}
+              action={handleSubmit}
+              className="rounded-lg border border-white/10 p-4"
+            >
               <input type="hidden" name="questionId" value={q.id} />
+              <div className="mb-1 text-xs uppercase tracking-wide text-white/40">
+                {q.status === 'closed' ? 'Cerrada' : 'Vencida (sigue abierta)'}
+              </div>
               <h2 className="mb-3 font-medium">{q.title}</h2>
               <div className="mb-3 space-y-2">
                 {q.options.map((opt) => (
