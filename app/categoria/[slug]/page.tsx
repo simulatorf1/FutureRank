@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Header } from '@/components/layout/Header'
+import { Footer } from '@/components/layout/Footer'
 import { QuestionCard } from '@/components/questions/QuestionCard'
 import { createClient } from '@/lib/supabase/client'
 import type { QuestionCard as QuestionCardType } from '@/lib/questions'
@@ -42,24 +43,32 @@ function CategoryContent() {
       const { data: questions } = await supabase
         .from('questions')
         .select(`
-          id, title, resolution_date, status,
-          categories!questions_category_id_fkey(name, slug)
+          id, title, resolution_date, status, resolved_option_id,
+          categories!questions_category_id_fkey(name, slug),
+          question_options!question_options_question_id_fkey(id, text)
         `)
         .in('category_id', categoryIds)
         .order('created_at', { ascending: false })
         .limit(50)
 
       setQuestions(
-        (questions ?? []).map((q: any) => ({
-          id: q.id,
-          title: q.title,
-          category_name: q.categories?.name ?? '',
-          category_slug: q.categories?.slug ?? '',
-          resolution_date: q.resolution_date,
-          status: q.status,
-          vote_count: 0,
-          option_count: 0,
-        }))
+        (questions ?? []).map((q: any) => {
+          const resolvedOption =
+            q.status === 'resolved'
+              ? (q.question_options ?? []).find((o: any) => o.id === q.resolved_option_id)
+              : null
+
+          return {
+            id: q.id,
+            title: q.title,
+            category_name: q.categories?.name ?? '',
+            category_slug: q.categories?.slug ?? '',
+            resolution_date: q.resolution_date,
+            status: q.status,
+            vote_count: 0,
+            resolved_option_text: resolvedOption?.text ?? null,
+          }
+        })
       )
       setLoading(false)
     }
@@ -87,6 +96,7 @@ function CategoryContent() {
               categoryName={q.category_name}
               resolutionDate={q.resolution_date}
               status={q.status}
+              resolvedOptionText={q.resolved_option_text}
             />
           ))}
         </div>
@@ -102,6 +112,7 @@ export default function CategoryPage() {
       <Suspense fallback={<main className="p-12">Cargando...</main>}>
         <CategoryContent />
       </Suspense>
+      <Footer />
     </>
   )
 }
