@@ -48,8 +48,23 @@ export function Header() {
           Future<span className="text-white/40">Rank</span>
         </Link>
         <nav className="flex items-center gap-3 text-sm">
-          <Link href="/ranking" className="hidden text-white/60 transition hover:text-white sm:inline">
+          <Link
+            href="/ranking"
+            className="hidden text-white/60 transition hover:text-white sm:inline"
+          >
             Ranking
+          </Link>
+          <Link
+            href="/como-funciona"
+            className="hidden text-white/60 transition hover:text-white md:inline"
+          >
+            Cómo funciona
+          </Link>
+          <Link
+            href="/faq"
+            className="hidden text-white/60 transition hover:text-white md:inline"
+          >
+            FAQ
           </Link>
 
           {!loading && hasRealAccount && (
