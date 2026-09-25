@@ -263,21 +263,24 @@ export default function AdminPage() {
                         </button>
                       </form>
                     )}
-
-                    {q.status === 'closed' && (
+                  
+                    {(q.status === 'closed' || q.status === 'resolved') && (
+                      <form
+                        action={(fd) => {
+                          fd.set('password', password)
+                          fd.set('questionId', String(q.id))
+                          return runAction(reopenQuestion, fd)
+                        }}
+                      >
+                        <button className="rounded border border-white/10 px-3 py-1 text-xs hover:bg-white/10">
+                          Reabrir
+                        </button>
+                      </form>
+                    )}
+                  
+                    {q.status !== 'resolved' && (
                       <>
-                        <form
-                          action={(fd) => {
-                            fd.set('password', password)
-                            fd.set('questionId', String(q.id))
-                            return runAction(reopenQuestion, fd)
-                          }}
-                        >
-                          <button className="rounded border border-white/10 px-3 py-1 text-xs hover:bg-white/10">
-                            Reabrir
-                          </button>
-                        </form>
-
+                        <span className="self-center text-xs text-white/40">Resolver con:</span>
                         {q.options.map((opt) => (
                           <form
                             key={opt.id}
@@ -289,27 +292,13 @@ export default function AdminPage() {
                             }}
                           >
                             <button className="rounded bg-green-500/20 px-3 py-1 text-xs text-green-300 hover:bg-green-500/30">
-                              Resolver: {opt.text}
+                              {opt.text}
                             </button>
                           </form>
                         ))}
                       </>
                     )}
-
-                    {q.status === 'resolved' && (
-                      <form
-                        action={(fd) => {
-                          fd.set('password', password)
-                          fd.set('questionId', String(q.id))
-                          return runAction(reopenQuestion, fd)
-                        }}
-                      >
-                        <button className="rounded border border-white/10 px-3 py-1 text-xs hover:bg-white/10">
-                          Reabrir (recalcular)
-                        </button>
-                      </form>
-                    )}
-
+                  
                     <form
                       action={(fd) => {
                         if (!confirm('¿Eliminar esta pregunta definitivamente?')) return
