@@ -58,6 +58,8 @@ export function VoteButtons({
           setResults(currentResults)
         } else if (result.reason === 'closed') {
           setError('Esta pregunta ya no acepta votos.')
+        } else if (result.reason === 'expired') {
+          setError('Esta pregunta ha vencido y no acepta más votos.')
         }
         return
       }
