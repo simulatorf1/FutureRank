@@ -63,6 +63,8 @@ export function VoteButtons({
           ])
           setUserVote(existing)
           setResults(currentResults)
+        } else if (result.reason === 'closed') {
+          setError('Esta pregunta ya no acepta votos.')
         }
         return
       }
