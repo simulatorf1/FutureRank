@@ -6,9 +6,28 @@ type Props = {
   categoryName: string
   resolutionDate: string
   status: string
+  resolvedOptionText?: string | null
 }
 
-export function QuestionCard({ id, title, categoryName, resolutionDate, status }: Props) {
+function timeUntil(dateStr: string) {
+  const diff = new Date(dateStr).getTime() - Date.now()
+  if (diff <= 0) return 'vencida'
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  if (days > 0) return `en ${days}d`
+  const hours = Math.floor(diff / (1000 * 60 * 60))
+  if (hours > 0) return `en ${hours}h`
+  const mins = Math.floor(diff / (1000 * 60))
+  return `en ${mins}m`
+}
+
+export function QuestionCard({
+  id,
+  title,
+  categoryName,
+  resolutionDate,
+  status,
+  resolvedOptionText,
+}: Props) {
   const date = new Date(resolutionDate)
   const dateStr = date.toLocaleDateString('es-ES', {
     day: 'numeric',
@@ -24,10 +43,20 @@ export function QuestionCard({ id, title, categoryName, resolutionDate, status }
       <div className="mb-2 flex items-center justify-between text-xs">
         <span className="uppercase tracking-wide text-white/40">{categoryName}</span>
         <span className="text-white/40">
-          {status === 'resolved' ? 'Resuelta' : `Cierra ${dateStr}`}
+          {status === 'resolved'
+            ? 'Resuelta'
+            : status === 'closed'
+            ? 'Cerrada'
+            : `Cierra ${timeUntil(resolutionDate)}`}
         </span>
       </div>
       <h3 className="font-medium leading-snug">{title}</h3>
+      {status === 'resolved' && resolvedOptionText && (
+        <div className="mt-2 text-xs text-green-400">✓ {resolvedOptionText}</div>
+      )}
+      {status === 'open' && (
+        <div className="mt-2 text-xs text-white/30">Cierra el {dateStr}</div>
+      )}
     </Link>
   )
 }
