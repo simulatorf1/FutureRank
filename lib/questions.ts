@@ -308,3 +308,14 @@ export async function voteComment(commentId: number, value: 1 | -1) {
 
   if (error) throw error
 }
+export async function deleteComment(commentId: number) {
+  const supabase = createClient()
+  const { error } = await supabase.from('comments').delete().eq('id', commentId)
+  if (error) throw error
+}
+
+export async function deleteQuestion(questionId: number) {
+  const supabase = createClient()
+  const { error } = await supabase.from('questions').delete().eq('id', questionId)
+  if (error) throw error
+}
