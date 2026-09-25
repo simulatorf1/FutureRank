@@ -89,3 +89,110 @@ export async function getUserVoteForQuestion(questionId: number): Promise<number
 
   return data?.option_id ?? null
 }
+export type QuestionCard = {
+  id: number
+  title: string
+  category_name: string
+  category_slug: string
+  resolution_date: string
+  status: string
+  vote_count: number
+  option_count: number
+}
+
+export async function getFeaturedQuestions(limit = 6): Promise<QuestionCard[]> {
+  const supabase = createClient()
+
+  const { data, error } = await supabase
+    .from('questions')
+    .select(`
+      id, title, resolution_date, status,
+      categories!questions_category_id_fkey(name, slug),
+      question_options!question_options_question_id_fkey(id)
+    `)
+    .eq('status', 'open')
+    .order('resolution_date', { ascending: true })
+    .limit(limit)
+
+  if (error || !data) return []
+
+  return data.map((q: any) => ({
+    id: q.id,
+    title: q.title,
+    category_name: q.categories?.name ?? '',
+    category_slug: q.categories?.slug ?? '',
+    resolution_date: q.resolution_date,
+    status: q.status,
+    vote_count: 0,
+    option_count: q.question_options?.length ?? 0,
+  }))
+}
+
+export async function getTrendingQuestions(limit = 6): Promise<QuestionCard[]> {
+  const supabase = createClient()
+
+  const { data, error } = await supabase
+    .from('questions')
+    .select(`
+      id, title, resolution_date, status,
+      categories!questions_category_id_fkey(name, slug),
+      question_options!question_options_question_id_fkey(id)
+    `)
+    .eq('status', 'open')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (error || !data) return []
+
+  return data.map((q: any) => ({
+    id: q.id,
+    title: q.title,
+    category_name: q.categories?.name ?? '',
+    category_slug: q.categories?.slug ?? '',
+    resolution_date: q.resolution_date,
+    status: q.status,
+    vote_count: 0,
+    option_count: q.question_options?.length ?? 0,
+  }))
+}
+
+export async function getRecentQuestions(limit = 8): Promise<QuestionCard[]> {
+  const supabase = createClient()
+
+  const { data, error } = await supabase
+    .from('questions')
+    .select(`
+      id, title, resolution_date, status,
+      categories!questions_category_id_fkey(name, slug),
+      question_options!question_options_question_id_fkey(id)
+    `)
+    .eq('status', 'open')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (error || !data) return []
+
+  return data.map((q: any) => ({
+    id: q.id,
+    title: q.title,
+    category_name: q.categories?.name ?? '',
+    category_slug: q.categories?.slug ?? '',
+    resolution_date: q.resolution_date,
+    status: q.status,
+    vote_count: 0,
+    option_count: q.question_options?.length ?? 0,
+  }))
+}
+
+export async function getTopCategories(): Promise<{ id: number; name: string; slug: string }[]> {
+  const supabase = createClient()
+
+  const { data, error } = await supabase
+    .from('categories')
+    .select('id, name, slug')
+    .is('parent_id', null)
+    .order('name')
+
+  if (error || !data) return []
+  return data
+}
