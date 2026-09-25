@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Header } from '@/components/layout/Header'
 import { VoteButtons } from '@/components/questions/VoteButtons'
 import { CommentSection } from '@/components/comments/CommentSection'
+import { Footer } from '@/components/layout/Footer'
 import { getQuestionBySlugOrId, type QuestionWithOptions } from '@/lib/questions'
 
 function QuestionContent() {
@@ -54,6 +55,7 @@ function QuestionContent() {
       <VoteButtons questionId={question.id} options={question.options} />
       <CommentSection questionId={question.id} />
     </main>
+    <Footer />
   )
 }
 
