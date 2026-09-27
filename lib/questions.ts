@@ -427,12 +427,14 @@ export async function getNextQuestion(
     : null
 
   const chosen = differentCategory ?? data[0]
+  const cats = chosen.categories as any
+  const catObj = Array.isArray(cats) ? cats[0] : cats
 
   return {
     id: chosen.id,
     title: chosen.title,
-    category_name: chosen.categories?.name ?? '',
-    category_slug: chosen.categories?.slug ?? '',
+    category_name: catObj?.name ?? '',
+    category_slug: catObj?.slug ?? '',
     resolution_date: chosen.resolution_date,
     status: chosen.status,
     vote_count: 0,
