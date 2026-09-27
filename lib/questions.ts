@@ -388,3 +388,54 @@ export async function deleteQuestion(questionId: number) {
   const { error } = await supabase.from('questions').delete().eq('id', questionId)
   if (error) throw error
 }
+export async function getNextQuestion(
+  currentQuestionId: number,
+  excludeIds: number[] = []
+): Promise<QuestionCard | null> {
+  const supabase = createClient()
+
+  // Traer la categoría de la pregunta actual
+  const { data: current } = await supabase
+    .from('questions')
+    .select('category_id')
+    .eq('id', currentQuestionId)
+    .maybeSingle()
+
+  // 1º intento: pregunta abierta de otra categoría
+  let query = supabase
+    .from('questions')
+    .select(`
+      id, title, resolution_date, status,
+      categories!questions_category_id_fkey(name, slug)
+    `)
+    .eq('status', 'open')
+    .neq('id', currentQuestionId)
+    .order('created_at', { ascending: false })
+    .limit(10)
+
+  if (excludeIds.length > 0) {
+    query = query.not('id', 'in', `(${excludeIds.join(',')})`)
+  }
+
+  const { data, error } = await query
+
+  if (error || !data || data.length === 0) return null
+
+  // Preferir una de distinta categoría para variar el tema
+  const differentCategory = current?.category_id
+    ? data.find((q: any) => q.category_id !== current.category_id)
+    : null
+
+  const chosen = differentCategory ?? data[0]
+
+  return {
+    id: chosen.id,
+    title: chosen.title,
+    category_name: chosen.categories?.name ?? '',
+    category_slug: chosen.categories?.slug ?? '',
+    resolution_date: chosen.resolution_date,
+    status: chosen.status,
+    vote_count: 0,
+    resolved_option_text: null,
+  }
+}
