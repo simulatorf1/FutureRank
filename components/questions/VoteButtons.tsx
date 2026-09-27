@@ -10,9 +10,11 @@ type Option = { id: number; text: string; position: number }
 export function VoteButtons({
   questionId,
   options,
+  onVoted,
 }: {
   questionId: number
   options: Option[]
+  onVoted?: () => void
 }) {
   const [userVote, setUserVote] = useState<number | null>(null)
   const [results, setResults] = useState<VoteResult[]>([])
@@ -68,10 +70,11 @@ export function VoteButtons({
       const updated = await getVoteResults(questionId)
       setResults(updated)
 
-      // Si el usuario es anónimo, mostrar el aviso de registro inmediatamente
       if (result.isAnonymous) {
         setShowConversion(true)
       }
+
+      onVoted?.()
     } catch (e: any) {
       setError('No se pudo registrar el voto. Inténtalo de nuevo.')
       console.error(e)
