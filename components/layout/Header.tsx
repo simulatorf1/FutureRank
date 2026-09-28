@@ -2,13 +2,12 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { NotificationBell } from './NotificationBell'
 
 export function Header() {
   const router = useRouter()
-  const pathname = usePathname()
   const [userId, setUserId] = useState<string | null>(null)
   const [isAnonymous, setIsAnonymous] = useState(true)
   const [loading, setLoading] = useState(true)
@@ -32,11 +31,6 @@ export function Header() {
 
     return () => subscription.unsubscribe()
   }, [])
-
-  // Cerrar el menú al cambiar de ruta
-  useEffect(() => {
-    setMenuOpen(false)
-  }, [pathname])
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -115,7 +109,7 @@ export function Header() {
           )}
         </nav>
 
-        {/* Móvil: botón + campana */}
+        {/* Móvil: campana + botón menú */}
         <div className="flex items-center gap-3 md:hidden">
           {!loading && <NotificationBell />}
           <button
@@ -136,6 +130,7 @@ export function Header() {
               <Link
                 key={l.href}
                 href={l.href}
+                onClick={() => setMenuOpen(false)}
                 className="border-b border-white/5 py-3 text-sm text-white/70 transition hover:text-white"
               >
                 {l.label}
@@ -146,6 +141,7 @@ export function Header() {
               <>
                 <Link
                   href={`/u/${userId}`}
+                  onClick={() => setMenuOpen(false)}
                   className="border-b border-white/5 py-3 text-sm text-white/70 transition hover:text-white"
                 >
                   Mi perfil
@@ -163,12 +159,14 @@ export function Header() {
               <>
                 <Link
                   href="/login"
+                  onClick={() => setMenuOpen(false)}
                   className="border-b border-white/5 py-3 text-sm text-white/70 transition hover:text-white"
                 >
                   Iniciar sesión
                 </Link>
                 <Link
                   href="/registro"
+                  onClick={() => setMenuOpen(false)}
                   className="my-3 rounded-md bg-white px-4 py-2 text-center text-sm font-medium text-black transition hover:bg-white/90"
                 >
                   Crear cuenta
