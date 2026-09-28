@@ -12,6 +12,7 @@ import {
   deleteQuestion,
   saveAd,
   toggleAd,
+  getAdminStats,
 } from './actions'
 
 type AdminQuestion = {
@@ -47,7 +48,7 @@ const AD_SLOTS = ['home_sidebar', 'home_bottom', 'question_sidebar', 'question_b
 export default function AdminPage() {
   const [password, setPassword] = useState('')
   const [authed, setAuthed] = useState(false)
-  const [view, setView] = useState<'questions' | 'ads'>('questions')
+  const [view, setView] = useState<'questions' | 'ads' | 'stats'>('questions')
 
   const [questions, setQuestions] = useState<AdminQuestion[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -55,6 +56,9 @@ export default function AdminPage() {
   const [filter, setFilter] = useState<string>('all')
   const [message, setMessage] = useState<string | null>(null)
   const [editing, setEditing] = useState<number | null>(null)
+
+  const [stats, setStats] = useState<any>(null)
+  const [loadingStats, setLoadingStats] = useState(false)
 
   const loadAll = async () => {
     const supabase = createClient()
@@ -92,6 +96,15 @@ export default function AdminPage() {
   useEffect(() => {
     if (authed) loadAll()
   }, [authed])
+
+  useEffect(() => {
+    if (view !== 'stats' || !authed) return
+    setLoadingStats(true)
+    getAdminStats().then((s) => {
+      setStats(s)
+      setLoadingStats(false)
+    })
+  }, [view, authed])
 
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault()
@@ -176,6 +189,14 @@ export default function AdminPage() {
             }`}
           >
             Anuncios
+          </button>
+          <button
+            onClick={() => setView('stats')}
+            className={`rounded-md px-3 py-1.5 text-sm ${
+              view === 'stats' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white'
+            }`}
+          >
+            Estadísticas
           </button>
         </div>
 
@@ -421,7 +442,7 @@ export default function AdminPage() {
                       name="content"
                       defaultValue={current?.content ?? ''}
                       placeholder="Contenido (texto o HTML simple)"
-                      rows={2}
+                      rows={3}
                       className="w-full rounded border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"
                     />
                     <input
@@ -460,8 +481,169 @@ export default function AdminPage() {
             })}
           </div>
         )}
+
+        {view === 'stats' && (
+          <div className="space-y-8">
+            {loadingStats || !stats ? (
+              <div className="grid gap-3 sm:grid-cols-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-20 animate-pulse rounded-lg bg-white/5" />
+                ))}
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-3 sm:grid-cols-4">
+                  <StatCard label="Preguntas" value={stats.totals.questions} />
+                  <StatCard label="Votos" value={stats.totals.votes} />
+                  <StatCard label="Usuarios" value={stats.totals.users} />
+                  <StatCard label="Comentarios" value={stats.totals.comments} />
+                </div>
+
+                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <h3 className="mb-3 text-sm font-medium text-white/80">
+                    Actividad de votos
+                  </h3>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <div className="text-xs text-white/40">Hoy</div>
+                      <div className="text-2xl font-semibold">{stats.votesToday}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-white/40">Ayer</div>
+                      <div className="text-2xl font-semibold text-white/60">
+                        {stats.votesYesterday}
+                      </div>
+                      {stats.votesYesterday > 0 && (
+                        <div
+                          className={`mt-1 text-xs ${
+                            stats.votesToday >= stats.votesYesterday
+                              ? 'text-green-400'
+                              : 'text-red-400'
+                          }`}
+                        >
+                          {stats.votesToday >= stats.votesYesterday ? '▲' : '▼'}{' '}
+                          {Math.abs(
+                            Math.round(
+                              ((stats.votesToday - stats.votesYesterday) /
+                                stats.votesYesterday) *
+                                100
+                            )
+                          )}
+                          %
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <h3 className="mb-4 text-sm font-medium text-white/80">
+                    Votos últimos 7 días
+                  </h3>
+                  <BarChart data={stats.votesByDay} />
+                </div>
+
+                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <h3 className="mb-4 text-sm font-medium text-white/80">
+                    Usuarios nuevos últimos 7 días
+                  </h3>
+                  <BarChart data={stats.usersByDay} />
+                </div>
+
+                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <h3 className="mb-3 text-sm font-medium text-white/80">
+                    Preguntas más votadas (7 días)
+                  </h3>
+                  <div className="space-y-2">
+                    {stats.topQuestions.length === 0 ? (
+                      <p className="text-xs text-white/40">Sin datos aún.</p>
+                    ) : (
+                      stats.topQuestions.map((q: any, i: number) => (
+                        <div
+                          key={q.id}
+                          className="flex items-center justify-between text-sm"
+                        >
+                          <span className="flex items-center gap-2 text-white/70">
+                            <span className="w-5 text-center text-xs text-white/40">
+                              #{i + 1}
+                            </span>
+                            {q.title}
+                          </span>
+                          <span className="text-xs text-white/40">{q.count} votos</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <h3 className="mb-3 text-sm font-medium text-white/80">
+                    Categorías más activas (7 días)
+                  </h3>
+                  <div className="space-y-2">
+                    {stats.topCategories.length === 0 ? (
+                      <p className="text-xs text-white/40">Sin datos aún.</p>
+                    ) : (
+                      stats.topCategories.map((c: any, i: number) => (
+                        <div
+                          key={c.name}
+                          className="flex items-center justify-between text-sm"
+                        >
+                          <span className="flex items-center gap-2 text-white/70">
+                            <span className="w-5 text-center text-xs text-white/40">
+                              #{i + 1}
+                            </span>
+                            {c.name}
+                          </span>
+                          <span className="text-xs text-white/40">{c.count} votos</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </main>
       <Footer />
     </>
+  )
+}
+
+function StatCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+      <div className="text-xs text-white/40">{label}</div>
+      <div className="mt-1 text-2xl font-semibold">{value}</div>
+    </div>
+  )
+}
+
+function BarChart({ data }: { data: { date: string; count: number }[] }) {
+  const max = Math.max(...data.map((d) => d.count), 1)
+
+  return (
+    <div className="flex h-32 items-end justify-between gap-2">
+      {data.map((d) => {
+        const height = (d.count / max) * 100
+        const dayLabel = new Date(d.date).toLocaleDateString('es-ES', {
+          weekday: 'short',
+        })
+        return (
+          <div key={d.date} className="flex flex-1 flex-col items-center gap-1">
+            <div className="flex w-full flex-1 items-end">
+              <div
+                className="w-full rounded-t bg-white/30 transition-all"
+                style={{ height: `${height}%`, minHeight: d.count > 0 ? '4px' : '0' }}
+                title={`${d.count} el ${d.date}`}
+              />
+            </div>
+            <div className="text-[10px] text-white/40">{dayLabel}</div>
+            <div className="text-[10px] font-medium text-white/60">{d.count}</div>
+          </div>
+        )
+      })}
+    </div>
   )
 }
