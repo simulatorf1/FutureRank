@@ -197,20 +197,6 @@ function QuestionContent() {
   )
 }
 
-export default function QuestionPage() {
-  return (
-    <>
-      <Header />
-      <Suspense
-        fallback={
-          <main className="mx-auto max-w-2xl px-4 py-12">
-            <p className="text-white/60">Cargando...</p>
-          </main>
-        }
-      >
-        <QuestionContent />
-      </Suspense>
-      <Footer />
-    </>
-  )
+export default function Contenido() {
+  return <QuestionContent />
 }
