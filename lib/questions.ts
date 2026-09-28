@@ -80,27 +80,19 @@ export async function getQuestionBySlugOrId(id: number): Promise<QuestionWithOpt
 export async function getVoteResults(questionId: number): Promise<VoteResult[]> {
   const supabase = createClient()
 
-  const { data: rawVotes, error } = await supabase
-    .from('votes')
-    .select('option_id')
-    .eq('question_id', questionId)
+  const { data, error } = await supabase.rpc('get_vote_counts', {
+    p_question_id: questionId,
+  })
 
-  if (error || !rawVotes) return []
+  if (error || !data) return []
 
-  const counts = new Map<number, number>()
-  for (const v of rawVotes) {
-    counts.set(v.option_id, (counts.get(v.option_id) ?? 0) + 1)
-  }
-
-  const total = rawVotes.length
-  if (total === 0) return []
-
-  return Array.from(counts.entries()).map(([option_id, votes]) => ({
-    option_id,
-    votes,
-    percent: Math.round((votes / total) * 100),
+  return data.map((r: any) => ({
+    option_id: r.option_id,
+    votes: Number(r.votes),
+    percent: r.percent,
   }))
 }
+
 
 export async function getUserVoteForQuestion(questionId: number): Promise<number | null> {
   const supabase = createClient()
