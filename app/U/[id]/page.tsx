@@ -224,6 +224,27 @@ function ProfileContent() {
         <Stat label="Puntos" value={profile.total_points} />
       </div>
 
+      {(profile.current_streak > 0 || profile.best_streak > 0) && (
+        <div className="mb-10 grid grid-cols-2 gap-3">
+          <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-4">
+            <div className="text-xs text-orange-300/70">🔥 Racha actual</div>
+            <div className="mt-1 text-2xl font-semibold">{profile.current_streak}</div>
+            <div className="text-xs text-white/40">
+              {profile.current_streak === 0
+                ? 'Sin racha activa'
+                : profile.current_streak === 1
+                ? 'acierto consecutivo'
+                : 'aciertos consecutivos'}
+            </div>
+          </div>
+          <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+            <div className="text-xs text-white/40">🏅 Mejor racha</div>
+            <div className="mt-1 text-2xl font-semibold">{profile.best_streak}</div>
+            <div className="text-xs text-white/40">récord personal</div>
+          </div>
+        </div>
+      )}
+
       {categoryRanks.length > 0 && (
         <section className="mb-10">
           <h2 className="mb-4 text-lg font-medium">Rankings por categoría</h2>
