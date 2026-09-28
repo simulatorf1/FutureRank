@@ -28,6 +28,15 @@ type HistoryItem = {
   created_at: string
 }
 
+type Badge = {
+  code: string
+  name: string
+  description: string
+  icon: string
+  category: string
+  earned_at: string
+}
+
 function ProfileContent() {
   const params = useParams()
   const userId = String(params.id)
@@ -35,6 +44,7 @@ function ProfileContent() {
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [globalPosition, setGlobalPosition] = useState<number | null>(null)
   const [categoryRanks, setCategoryRanks] = useState<any[]>([])
+  const [badges, setBadges] = useState<Badge[]>([])
   const [loading, setLoading] = useState(true)
   const [isOwner, setIsOwner] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -49,7 +59,7 @@ function ProfileContent() {
     const { data: { user } } = await supabase.auth.getUser()
     setIsOwner(user?.id === userId)
 
-    const [profRes, histRes, rankRes, catRes] = await Promise.all([
+    const [profRes, histRes, rankRes, catRes, badgesRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
       supabase
         .from('user_scoring_history')
@@ -67,12 +77,23 @@ function ProfileContent() {
         .eq('user_id', userId)
         .order('position')
         .limit(10),
+      supabase
+        .from('user_badges')
+        .select('earned_at, badges(code, name, description, icon, category)')
+        .eq('user_id', userId)
+        .order('earned_at', { ascending: false }),
     ])
 
     setProfile(profRes.data)
     setHistory(histRes.data ?? [])
     setGlobalPosition(rankRes.data?.position ?? null)
     setCategoryRanks(catRes.data ?? [])
+    setBadges(
+      (badgesRes.data ?? []).map((b: any) => ({
+        ...(Array.isArray(b.badges) ? b.badges[0] : b.badges),
+        earned_at: b.earned_at,
+      }))
+    )
     setDisplayName(profRes.data?.display_name ?? '')
     setBio(profRes.data?.bio ?? '')
     setLoading(false)
@@ -243,6 +264,31 @@ function ProfileContent() {
             <div className="text-xs text-white/40">récord personal</div>
           </div>
         </div>
+      )}
+
+      {badges.length > 0 && (
+        <section className="mb-10">
+          <h2 className="mb-4 text-lg font-medium">
+            Medallas <span className="text-white/40">({badges.length})</span>
+          </h2>
+          <div className="flex flex-wrap gap-3">
+            {badges.map((b) => (
+              <div
+                key={b.code}
+                className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2"
+                title={b.description}
+              >
+                <span className="text-xl">{b.icon}</span>
+                <div>
+                  <div className="text-xs font-medium">{b.name}</div>
+                  <div className="text-[10px] text-white/40">
+                    {new Date(b.earned_at).toLocaleDateString('es-ES')}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       {categoryRanks.length > 0 && (
