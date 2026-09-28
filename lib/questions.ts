@@ -445,6 +445,7 @@ export async function getNextQuestion(
   return {
     id: chosen.id,
     title: chosen.title,
+    description: q.description ?? null,
     category_name: catObj?.name ?? '',
     category_slug: catObj?.slug ?? '',
     resolution_date: chosen.resolution_date,
