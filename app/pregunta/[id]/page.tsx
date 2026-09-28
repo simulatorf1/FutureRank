@@ -10,6 +10,7 @@ import { CommentSection } from '@/components/comments/CommentSection'
 import { NextQuestionBlock } from '@/components/questions/NextQuestionBlock'
 import { ShareButtons } from '@/components/questions/ShareButtons'
 import { CategoryRanking } from '@/components/questions/CategoryRanking'
+import { AdSlot } from '@/components/ads/AdSlot'
 import { RelatedQuestions } from '@/components/questions/RelatedQuestions'
 import {
   getQuestionBySlugOrId,
@@ -151,8 +152,8 @@ function QuestionContent() {
             />
           )}
 
-          <div className="mt-8 rounded-lg border border-dashed border-white/10 bg-white/[0.02] p-6 text-center">
-            <p className="text-xs text-white/30">Espacio publicitario</p>
+          <div className="mt-8">
+            <AdSlot slot="question_bottom" />
           </div>
 
           {categoryId && (
@@ -169,7 +170,7 @@ function QuestionContent() {
               categoryName={question.category_name}
             />
           )}
-
+          <AdSlot slot="question_sidebar" />
           <div className="rounded-lg border border-white/10 bg-white/5 p-4">
             <h3 className="mb-3 text-sm font-medium text-white/80">¿Cómo se puntúa?</h3>
             <p className="text-xs text-white/60">
