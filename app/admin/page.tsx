@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
+import { getAnalytics } from './actions'
 import {
   closeQuestion,
   reopenQuestion,
@@ -48,8 +49,10 @@ const AD_SLOTS = ['home_sidebar', 'home_bottom', 'question_sidebar', 'question_b
 export default function AdminPage() {
   const [password, setPassword] = useState('')
   const [authed, setAuthed] = useState(false)
-  const [view, setView] = useState<'questions' | 'ads' | 'stats'>('questions')
 
+  const [view, setView] = useState<'questions' | 'ads' | 'stats' | 'traffic'>('questions')
+  const [analytics, setAnalytics] = useState<any>(null)
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false)
   const [questions, setQuestions] = useState<AdminQuestion[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [ads, setAds] = useState<Ad[]>([])
@@ -92,7 +95,14 @@ export default function AdminPage() {
     setCategories(cRes.data ?? [])
     setAds(aRes.data ?? [])
   }
-
+  useEffect(() => {
+    if (view !== 'traffic' || !authed) return
+    setLoadingAnalytics(true)
+    getAnalytics().then((a) => {
+      setAnalytics(a)
+      setLoadingAnalytics(false)
+    })
+  }, [view, authed])
   useEffect(() => {
     if (authed) loadAll()
   }, [authed])
@@ -189,7 +199,16 @@ export default function AdminPage() {
             }`}
           >
             Anuncios
+            
           </button>
+          <button
+            onClick={() => setView('traffic')}
+            className={`rounded-md px-3 py-1.5 text-sm ${
+              view === 'traffic' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white'
+            }`}
+          >
+            Tráfico
+          </button>          
           <button
             onClick={() => setView('stats')}
             className={`rounded-md px-3 py-1.5 text-sm ${
@@ -605,6 +624,97 @@ export default function AdminPage() {
             )}
           </div>
         )}
+        {view === 'traffic' && (
+          <div className="space-y-8">
+            {loadingAnalytics || !analytics ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-32 animate-pulse rounded-lg bg-white/5" />
+                ))}
+              </div>
+            ) : (
+              <>
+                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <h3 className="mb-4 text-sm font-medium text-white/80">
+                    Visitas últimos 30 días
+                  </h3>
+                  <BarChart
+                    data={analytics.visits.map((v: any) => ({
+                      date: v.day,
+                      count: Number(v.visits),
+                    }))}
+                  />
+                </div>
+
+                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <h3 className="mb-3 text-sm font-medium text-white/80">
+                    Fuentes de tráfico (30 días)
+                  </h3>
+                  <div className="space-y-2">
+                    {analytics.sources.length === 0 ? (
+                      <p className="text-xs text-white/40">Sin datos aún.</p>
+                    ) : (
+                      analytics.sources.map((s: any) => (
+                        <div
+                          key={s.source}
+                          className="flex items-center justify-between text-sm"
+                        >
+                          <span className="text-white/70">{s.source}</span>
+                          <span className="text-xs text-white/40">
+                            {s.visits} visitas
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <h3 className="mb-3 text-sm font-medium text-white/80">
+                    Páginas más visitadas
+                  </h3>
+                  <div className="space-y-2">
+                    {analytics.pages.length === 0 ? (
+                      <p className="text-xs text-white/40">Sin datos aún.</p>
+                    ) : (
+                      analytics.pages.map((p: any, i: number) => (
+                        <div
+                          key={p.path}
+                          className="flex items-center justify-between text-sm"
+                        >
+                          <span className="flex items-center gap-2 text-white/70">
+                            <span className="w-5 text-center text-xs text-white/40">
+                              #{i + 1}
+                            </span>
+                            <code className="text-xs">{p.path}</code>
+                          </span>
+                          <span className="text-xs text-white/40">
+                            {p.visits}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <h3 className="mb-3 text-sm font-medium text-white/80">
+                    Retención (30 días)
+                  </h3>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {analytics.retention.map((r: any) => (
+                      <div key={r.metric}>
+                        <div className="text-xs text-white/40">{r.metric}</div>
+                        <div className="text-2xl font-semibold">{r.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+        
       </main>
       <Footer />
     </>
