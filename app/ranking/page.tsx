@@ -12,6 +12,8 @@ type RankRow = {
   total_predictions: number
   total_correct: number
   total_points: number
+  current_streak: number
+  best_streak: number
   accuracy_percent: number
   position: number
 }
@@ -110,8 +112,15 @@ export default function RankingPage() {
                 <span className="flex-1">
                   {row.display_name ?? row.username ?? 'Anónimo'}
                 </span>
-                <span className="shrink-0 text-white/60">
-                  {row.total_correct}/{row.total_predictions} · {row.total_points} pts
+                <span className="shrink-0 text-right text-white/60">
+                  <span className="block">
+                    {row.total_correct}/{row.total_predictions} · {row.total_points} pts
+                  </span>
+                  {row.current_streak > 0 && (
+                    <span className="mt-0.5 block text-xs text-orange-400">
+                      🔥 {row.current_streak}
+                    </span>
+                  )}
                 </span>
               </Link>
             ))}
