@@ -7,6 +7,7 @@ import { Footer } from '@/components/layout/Footer'
 import { CategoryBar } from '@/components/categories/CategoryBar'
 import { StatsBanner } from '@/components/layout/StatsBanner'
 import { QuestionCard } from '@/components/questions/QuestionCard'
+import { AdSlot } from '@/components/ads/AdSlot'
 import {
   getClosingSoonQuestions,
   getTrendingQuestions,
@@ -174,7 +175,7 @@ export default function HomePage() {
                   </div>
                 </section>
               )}
-
+              <AdSlot slot="home_bottom" />
               {closingSoon.length === 0 &&
                 trending.length === 0 &&
                 recent.length === 0 &&
@@ -242,10 +243,7 @@ export default function HomePage() {
                 </Link>
               </section>
 
-              {/* Hueco publicitario */}
-              <div className="rounded-lg border border-dashed border-white/10 bg-white/[0.02] p-6 text-center">
-                <p className="text-xs text-white/30">Espacio publicitario</p>
-              </div>
+              <AdSlot slot="home_sidebar" />
 
               <Link
                 href="/crear"
