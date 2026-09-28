@@ -43,7 +43,7 @@ function CategoryContent() {
       const { data: questions } = await supabase
         .from('questions')
         .select(`
-          id, title, resolution_date, status, resolved_option_id,
+          id, title, description, resolution_date, status, resolved_option_id,
           categories!questions_category_id_fkey(name, slug),
           question_options!question_options_question_id_fkey(id, text)
         `)
@@ -61,6 +61,7 @@ function CategoryContent() {
           return {
             id: q.id,
             title: q.title,
+            description: q.description ?? null,
             category_name: q.categories?.name ?? '',
             category_slug: q.categories?.slug ?? '',
             resolution_date: q.resolution_date,
