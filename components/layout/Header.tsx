@@ -46,6 +46,7 @@ export function Header() {
 
   const links = [
     { href: '/ranking', label: 'Ranking' },
+    { href: '/preguntas', label: 'Preguntas' },
     { href: '/siguiendo', label: 'Siguiendo' },
     { href: '/salon', label: 'Salón' },
     { href: '/como-funciona', label: 'Cómo funciona' },
