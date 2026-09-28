@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Suspense } from 'react'
 import Link from 'next/link'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { QuestionCard } from '@/components/questions/QuestionCard'
+import { QuestionFilters, type Filters } from '@/components/questions/QuestionFilters'
 import { listQuestions, type QuestionListItem } from '@/lib/questions'
 
 const TABS: { value: 'all' | 'open' | 'closed' | 'resolved'; label: string }[] = [
@@ -22,8 +22,13 @@ function QuestionsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const status = (searchParams.get('status') as 'all' | 'open' | 'closed' | 'resolved') ?? 'all'
+  const status =
+    (searchParams.get('status') as 'all' | 'open' | 'closed' | 'resolved') ?? 'all'
   const page = Number(searchParams.get('page') ?? '1') || 1
+  const search = searchParams.get('search') ?? ''
+  const categorySlug = searchParams.get('cat') ?? ''
+  const subcategorySlug = searchParams.get('subcat') ?? ''
+  const sort = (searchParams.get('sort') as Filters['sort']) ?? 'recent'
 
   const [items, setItems] = useState<QuestionListItem[]>([])
   const [total, setTotal] = useState(0)
@@ -32,33 +37,55 @@ function QuestionsContent() {
   useEffect(() => {
     async function load() {
       setLoading(true)
-      const { items, total } = await listQuestions({ status, page, pageSize: PAGE_SIZE })
+      const { items, total } = await listQuestions({
+        status,
+        search,
+        categorySlug,
+        subcategorySlug,
+        sort,
+        page,
+        pageSize: PAGE_SIZE,
+      })
       setItems(items)
       setTotal(total)
       setLoading(false)
     }
     load()
-  }, [status, page])
+  }, [status, search, categorySlug, subcategorySlug, sort, page])
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
-  const buildUrl = (newStatus: string, newPage: number) => {
-    const params = new URLSearchParams()
-    if (newStatus !== 'all') params.set('status', newStatus)
-    if (newPage > 1) params.set('page', String(newPage))
+  const buildUrl = (overrides: Record<string, string | number>) => {
+    const params = new URLSearchParams(searchParams.toString())
+    Object.entries(overrides).forEach(([k, v]) => {
+      if (v === '' || v === 0 || v === 'all' || v === 1) params.delete(k)
+      else params.set(k, String(v))
+    })
     const qs = params.toString()
     return `/preguntas${qs ? `?${qs}` : ''}`
+  }
+
+  const handleFilterChange = (next: Filters) => {
+    router.push(
+      buildUrl({
+        search: next.search,
+        cat: next.categorySlug,
+        subcat: next.subcategorySlug,
+        sort: next.sort,
+        page: 1,
+      })
+    )
   }
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-12">
       <h1 className="mb-6 text-2xl font-semibold">Preguntas</h1>
 
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="mb-4 flex flex-wrap gap-2">
         {TABS.map((t) => (
           <Link
             key={t.value}
-            href={buildUrl(t.value, 1)}
+            href={buildUrl({ status: t.value, page: 1 })}
             className={`rounded-full px-4 py-1.5 text-sm transition ${
               status === t.value
                 ? 'bg-white text-black'
@@ -70,6 +97,11 @@ function QuestionsContent() {
         ))}
       </div>
 
+      <QuestionFilters
+        filters={{ search, categorySlug, subcategorySlug, sort }}
+        onChange={handleFilterChange}
+      />
+
       {loading ? (
         <div className="grid gap-3 sm:grid-cols-2">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -79,7 +111,7 @@ function QuestionsContent() {
       ) : items.length === 0 ? (
         <div className="rounded-lg border border-white/10 bg-white/5 p-8 text-center">
           <p className="mb-3 text-sm text-white/60">
-            No hay preguntas con este filtro.
+            No hay preguntas con estos filtros.
           </p>
           <Link
             href="/crear"
@@ -111,7 +143,7 @@ function QuestionsContent() {
           {totalPages > 1 && (
             <div className="mt-8 flex items-center justify-center gap-2">
               <Link
-                href={buildUrl(status, Math.max(1, page - 1))}
+                href={buildUrl({ page: Math.max(1, page - 1) })}
                 className={`rounded-md border border-white/10 px-3 py-1.5 text-sm ${
                   page === 1
                     ? 'pointer-events-none opacity-40'
@@ -124,7 +156,7 @@ function QuestionsContent() {
                 {page} / {totalPages}
               </span>
               <Link
-                href={buildUrl(status, Math.min(totalPages, page + 1))}
+                href={buildUrl({ page: Math.min(totalPages, page + 1) })}
                 className={`rounded-md border border-white/10 px-3 py-1.5 text-sm ${
                   page === totalPages
                     ? 'pointer-events-none opacity-40'
