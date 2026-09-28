@@ -6,25 +6,22 @@ import { createClient } from '@/lib/supabase/client'
 export function StatsBanner() {
   const [stats, setStats] = useState({
     questions: 0,
-    predictions: 0,
+    votes: 0,
     users: 0,
   })
 
   useEffect(() => {
     async function load() {
       const supabase = createClient()
+      const { data } = await supabase.rpc('get_global_stats')
 
-      const [qCount, vCount, pCount] = await Promise.all([
-        supabase.from('questions').select('id', { count: 'exact', head: true }),
-        supabase.from('votes').select('id', { count: 'exact', head: true }),
-        supabase.from('profiles').select('id', { count: 'exact', head: true }),
-      ])
-
-      setStats({
-        questions: qCount.count ?? 0,
-        predictions: vCount.count ?? 0,
-        users: pCount.count ?? 0,
-      })
+      if (data && data[0]) {
+        setStats({
+          questions: Number(data[0].questions ?? 0),
+          votes: Number(data[0].votes ?? 0),
+          users: Number(data[0].users ?? 0),
+        })
+      }
     }
     load()
   }, [])
@@ -36,7 +33,7 @@ export function StatsBanner() {
         <div className="text-xs text-white/40">Preguntas</div>
       </div>
       <div className="border-x border-white/10 text-center">
-        <div className="text-xl font-semibold">{stats.predictions}</div>
+        <div className="text-xl font-semibold">{stats.votes}</div>
         <div className="text-xs text-white/40">Predicciones</div>
       </div>
       <div className="text-center">
