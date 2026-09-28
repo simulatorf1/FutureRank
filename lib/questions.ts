@@ -454,3 +454,43 @@ export async function getNextQuestion(
     resolved_option_text: null,
   }
 }
+export async function createCategory(
+  name: string,
+  parentId: number
+): Promise<{ id: number; name: string; slug: string } | null> {
+  const supabase = createClient()
+
+  const slug = name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+  if (!slug) return null
+
+  const { data, error } = await supabase
+    .from('categories')
+    .insert({
+      name: name.trim(),
+      slug,
+      parent_id: parentId,
+    })
+    .select('id, name, slug')
+    .single()
+
+  if (error) {
+    // Si el slug ya existe, devolver la categoría existente en su lugar
+    if (error.code === '23505') {
+      const { data: existing } = await supabase
+        .from('categories')
+        .select('id, name, slug')
+        .eq('slug', slug)
+        .maybeSingle()
+      return existing ?? null
+    }
+    throw error
+  }
+
+  return data
+}
