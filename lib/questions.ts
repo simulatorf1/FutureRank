@@ -21,6 +21,7 @@ export type VoteResult = {
 export type QuestionCard = {
   id: number
   title: string
+  description: string | null
   category_name: string
   category_slug: string
   resolution_date: string
@@ -140,7 +141,7 @@ export async function getClosingSoonQuestions(limit = 6): Promise<QuestionCard[]
   const { data, error } = await supabase
     .from('questions')
     .select(`
-      id, title, resolution_date, status,
+      id, title, description, resolution_date, status,
       categories!questions_category_id_fkey(name, slug)
     `)
     .eq('status', 'open')
@@ -153,6 +154,7 @@ export async function getClosingSoonQuestions(limit = 6): Promise<QuestionCard[]
   return data.map((q: any) => ({
     id: q.id,
     title: q.title,
+    description: q.description ?? null,
     category_name: q.categories?.name ?? '',
     category_slug: q.categories?.slug ?? '',
     resolution_date: q.resolution_date,
@@ -189,7 +191,7 @@ export async function getTrendingQuestions(limit = 6): Promise<QuestionCard[]> {
   const { data, error } = await supabase
     .from('questions')
     .select(`
-      id, title, resolution_date, status,
+      id, title, description, resolution_date, status,
       categories!questions_category_id_fkey(name, slug)
     `)
     .in('id', topIds)
@@ -200,6 +202,7 @@ export async function getTrendingQuestions(limit = 6): Promise<QuestionCard[]> {
   return data.map((q: any) => ({
     id: q.id,
     title: q.title,
+    description: q.description ?? null,
     category_name: q.categories?.name ?? '',
     category_slug: q.categories?.slug ?? '',
     resolution_date: q.resolution_date,
@@ -215,7 +218,7 @@ export async function getRecentQuestions(limit = 8): Promise<QuestionCard[]> {
   const { data, error } = await supabase
     .from('questions')
     .select(`
-      id, title, resolution_date, status,
+      id, title, description, resolution_date, status,
       categories!questions_category_id_fkey(name, slug)
     `)
     .eq('status', 'open')
@@ -227,6 +230,7 @@ export async function getRecentQuestions(limit = 8): Promise<QuestionCard[]> {
   return data.map((q: any) => ({
     id: q.id,
     title: q.title,
+    description: q.description ?? null,
     category_name: q.categories?.name ?? '',
     category_slug: q.categories?.slug ?? '',
     resolution_date: q.resolution_date,
@@ -242,7 +246,7 @@ export async function getRecentlyResolvedQuestions(limit = 5): Promise<QuestionC
   const { data, error } = await supabase
     .from('questions')
     .select(`
-      id, title, resolution_date, status, resolved_option_id,
+      id, title, description, resolution_date, status, resolved_option_id,
       categories!questions_category_id_fkey(name, slug),
       question_options!question_options_question_id_fkey(id, text)
     `)
@@ -259,6 +263,7 @@ export async function getRecentlyResolvedQuestions(limit = 5): Promise<QuestionC
     return {
       id: q.id,
       title: q.title,
+      description: q.description ?? null,
       category_name: q.categories?.name ?? '',
       category_slug: q.categories?.slug ?? '',
       resolution_date: q.resolution_date,
@@ -412,7 +417,7 @@ export async function getNextQuestion(
   let query = supabase
     .from('questions')
     .select(`
-      id, title, resolution_date, status,
+      id, title, description, resolution_date, status,
       categories!questions_category_id_fkey(name, slug)
     `)
     .eq('status', 'open')
