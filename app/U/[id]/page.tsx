@@ -228,6 +228,14 @@ function ProfileContent() {
                 Editar perfil
               </button>
             )}
+            {!isOwner && !loading && (
+              <Link
+                href={`/comparar/${userId}`}
+                className="rounded-md border border-white/10 px-3 py-1.5 text-xs text-white/60 transition hover:bg-white/10"
+              >
+                Comparar conmigo
+              </Link>
+            )}            
             {globalPosition && (
               <div className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-right">
                 <div className="text-xs text-white/40">Posición global</div>
