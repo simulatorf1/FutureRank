@@ -10,7 +10,7 @@ const defaultUrl = process.env.VERCEL_URL
   : "http://localhost:3000";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(defaultUrl),
+  metadataBase: new URL('https://future-rank-mauve.vercel.app/'),
   title: {
     default: 'FutureRank — Demuestra quién predice mejor el futuro',
     template: '%s | FutureRank',
