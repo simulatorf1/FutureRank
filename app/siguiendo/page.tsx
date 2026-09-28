@@ -48,6 +48,12 @@ export default function FollowingPage() {
               Aún no sigues a nadie o la gente que sigues no tiene predicciones resueltas.
             </p>
             <Link
+              href="/siguiendo"
+              className="hidden text-white/60 transition hover:text-white sm:inline"
+            >
+              Siguiendo
+            </Link>            
+            <Link
               href="/ranking"
               className="inline-block rounded-md bg-white px-4 py-2 text-sm font-medium text-black transition hover:bg-white/90"
             >
