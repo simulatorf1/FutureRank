@@ -310,3 +310,21 @@ export async function getAdminStats() {
     votesYesterday: votesYesterday.count ?? 0,
   }
 }
+// ---- Analytics ----
+export async function getAnalytics() {
+  const supabase = getAdminClient()
+
+  const [visits, sources, pages, retention] = await Promise.all([
+    supabase.rpc('get_visits_by_day', { p_days: 30 }),
+    supabase.rpc('get_traffic_sources', { p_days: 30 }),
+    supabase.rpc('get_top_pages', { p_days: 30, p_limit: 20 }),
+    supabase.rpc('get_retention', { p_days: 30 }),
+  ])
+
+  return {
+    visits: visits.data ?? [],
+    sources: sources.data ?? [],
+    pages: pages.data ?? [],
+    retention: retention.data ?? [],
+  }
+}
