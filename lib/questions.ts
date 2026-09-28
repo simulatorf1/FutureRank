@@ -600,3 +600,77 @@ export async function getHeadToHead(theirId: string): Promise<HeadToHead | null>
     score: { me: scoreMe, them: scoreThem },
   }
 }
+export type QuestionListItem = {
+  id: number
+  title: string
+  description: string | null
+  category_name: string
+  category_slug: string
+  resolution_date: string
+  status: string
+  resolved_option_text: string | null
+  vote_count: number
+}
+
+export async function listQuestions({
+  status = 'all',
+  page = 1,
+  pageSize = 20,
+}: {
+  status?: 'all' | 'open' | 'closed' | 'resolved'
+  page?: number
+  pageSize?: number
+}): Promise<{ items: QuestionListItem[]; total: number }> {
+  const supabase = createClient()
+
+  let query = supabase
+    .from('questions')
+    .select(
+      `
+      id, title, description, resolution_date, status, resolved_option_id,
+      categories!questions_category_id_fkey(name, slug),
+      question_options!question_options_question_id_fkey(id, text)
+    `,
+      { count: 'exact' }
+    )
+
+  if (status === 'open') {
+    query = query.eq('status', 'open').gte('resolution_date', new Date().toISOString())
+  } else if (status === 'closed') {
+    query = query.or(
+      `status.eq.closed,and(status.eq.open,resolution_date.lt.${new Date().toISOString()})`
+    )
+  } else if (status === 'resolved') {
+    query = query.eq('status', 'resolved')
+  }
+
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
+  const { data, count, error } = await query
+    .order('created_at', { ascending: false })
+    .range(from, to)
+
+  if (error || !data) return { items: [], total: 0 }
+
+  const items: QuestionListItem[] = data.map((q: any) => {
+    const resolvedOption =
+      q.status === 'resolved'
+        ? (q.question_options ?? []).find((o: any) => o.id === q.resolved_option_id)
+        : null
+
+    return {
+      id: q.id,
+      title: q.title,
+      description: q.description ?? null,
+      category_name: q.categories?.name ?? '',
+      category_slug: q.categories?.slug ?? '',
+      resolution_date: q.resolution_date,
+      status: q.status,
+      resolved_option_text: resolvedOption?.text ?? null,
+      vote_count: 0,
+    }
+  })
+
+  return { items, total: count ?? 0 }
+}
