@@ -107,6 +107,11 @@ export default function NotificationsPage() {
                         {n.payload.was_correct
                           ? `Acertaste · +${n.payload.points ?? 0} puntos`
                           : 'Fallaste · 0 puntos'}
+                        {n.payload.was_correct && (n.payload.streak ?? 0) >= 2 && (
+                          <span className="ml-2 text-orange-400">
+                            🔥 {n.payload.streak} seguidos
+                          </span>
+                        )}
                       </span>
                       <span className="text-white/30">{timeAgo(n.created_at)}</span>
                     </div>
