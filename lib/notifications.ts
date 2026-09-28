@@ -9,6 +9,7 @@ export type Notification = {
     correct_option?: string
     was_correct?: boolean
     points?: number
+    streak?: number
   }
   is_read: boolean
   created_at: string
