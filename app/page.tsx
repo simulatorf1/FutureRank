@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { CategoryBar } from '@/components/categories/CategoryBar'
+import { StatsBanner } from '@/components/layout/StatsBanner'
 import { QuestionCard } from '@/components/questions/QuestionCard'
 import {
   getClosingSoonQuestions,
@@ -21,8 +22,6 @@ type Predictor = {
   display_name: string | null
   username: string | null
   total_points: number
-  total_correct: number
-  total_predictions: number
   position: number
 }
 
@@ -39,8 +38,8 @@ export default function HomePage() {
     async function load() {
       const [cats, closing, trend, rec, res, top] = await Promise.all([
         getTopCategories(),
-        getClosingSoonQuestions(4),
-        getTrendingQuestions(4),
+        getClosingSoonQuestions(6),
+        getTrendingQuestions(6),
         getRecentQuestions(6),
         getRecentlyResolvedQuestions(4),
         getTopPredictors(5),
@@ -59,25 +58,44 @@ export default function HomePage() {
   return (
     <>
       <Header />
-      <main className="mx-auto max-w-5xl px-4 py-8">
-        <section className="mb-10">
-          <h1 className="mb-2 text-3xl font-semibold tracking-tight">¿Tenías razón?</h1>
-          <p className="text-white/60">
+      <main className="mx-auto max-w-6xl px-4 py-8">
+        {/* Hero */}
+        <section className="mb-8 text-center">
+          <h1 className="mb-3 text-4xl font-semibold tracking-tight sm:text-5xl">
+            ¿Tenías razón?
+          </h1>
+          <p className="mx-auto mb-6 max-w-2xl text-white/60">
             Vota predicciones sobre el futuro y construye tu reputación acierto a acierto.
             Sin apuestas, sin dinero, solo tu historial.
           </p>
+          <div className="flex flex-wrap justify-center gap-3">
+            <a
+              href="#preguntas"
+              className="rounded-md bg-white px-6 py-2.5 font-medium text-black transition hover:bg-white/90"
+            >
+              Empezar a votar
+            </a>
+            <Link
+              href="/como-funciona"
+              className="rounded-md border border-white/10 px-6 py-2.5 text-white/70 transition hover:bg-white/10 hover:text-white"
+            >
+              Cómo funciona
+            </Link>
+          </div>
         </section>
+
+        <StatsBanner />
 
         <CategoryBar categories={categories} />
 
         {loading ? (
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-24 animate-pulse rounded-lg bg-white/5" />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="h-32 animate-pulse rounded-lg bg-white/5" />
             ))}
           </div>
         ) : (
-          <div className="grid gap-10 lg:grid-cols-3">
+          <div id="preguntas" className="grid gap-10 lg:grid-cols-3">
             {/* Columna principal */}
             <div className="space-y-10 lg:col-span-2">
               {closingSoon.length > 0 && (
@@ -89,6 +107,7 @@ export default function HomePage() {
                         key={q.id}
                         id={q.id}
                         title={q.title}
+                        description={q.description}
                         categoryName={q.category_name}
                         resolutionDate={q.resolution_date}
                         status={q.status}
@@ -107,6 +126,7 @@ export default function HomePage() {
                         key={q.id}
                         id={q.id}
                         title={q.title}
+                        description={q.description}
                         categoryName={q.category_name}
                         resolutionDate={q.resolution_date}
                         status={q.status}
@@ -119,12 +139,13 @@ export default function HomePage() {
               {recent.length > 0 && (
                 <section>
                   <h2 className="mb-4 text-lg font-medium">✨ Nuevas</h2>
-                  <div className="space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
                     {recent.map((q) => (
                       <QuestionCard
                         key={q.id}
                         id={q.id}
                         title={q.title}
+                        description={q.description}
                         categoryName={q.category_name}
                         resolutionDate={q.resolution_date}
                         status={q.status}
@@ -137,12 +158,13 @@ export default function HomePage() {
               {resolved.length > 0 && (
                 <section>
                   <h2 className="mb-4 text-lg font-medium">✅ Resueltas recientes</h2>
-                  <div className="space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
                     {resolved.map((q) => (
                       <QuestionCard
                         key={q.id}
                         id={q.id}
                         title={q.title}
+                        description={q.description}
                         categoryName={q.category_name}
                         resolutionDate={q.resolution_date}
                         status={q.status}
@@ -212,7 +234,18 @@ export default function HomePage() {
                   <li>3. Acertar lo improbable vale más que acertar lo obvio.</li>
                   <li>4. Compite en rankings por categoría y en el global.</li>
                 </ul>
+                <Link
+                  href="/como-funciona"
+                  className="mt-3 inline-block text-xs text-white/40 hover:text-white"
+                >
+                  Leer más →
+                </Link>
               </section>
+
+              {/* Hueco publicitario */}
+              <div className="rounded-lg border border-dashed border-white/10 bg-white/[0.02] p-6 text-center">
+                <p className="text-xs text-white/30">Espacio publicitario</p>
+              </div>
 
               <Link
                 href="/crear"
