@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { Suspense } from 'react'
+import { Tracker } from '@/components/layout/Tracker'
 import "./globals.css";
 
 const defaultUrl = process.env.VERCEL_URL
@@ -41,6 +43,9 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
+          <Suspense fallback={null}>
+            <Tracker />
+          </Suspense>
           {children}
         </ThemeProvider>
       </body>
