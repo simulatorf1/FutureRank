@@ -20,7 +20,7 @@ export function RelatedQuestions({
       const { data } = await supabase
         .from('questions')
         .select(`
-          id, title, resolution_date, status,
+          id, title, description, resolution_date, status,
           categories!questions_category_id_fkey(name, slug)
         `)
         .eq('category_id', categoryId)
@@ -33,6 +33,7 @@ export function RelatedQuestions({
         (data ?? []).map((q: any) => ({
           id: q.id,
           title: q.title,
+          description: q.description ?? null,
           category_name: q.categories?.name ?? '',
           category_slug: q.categories?.slug ?? '',
           resolution_date: q.resolution_date,
