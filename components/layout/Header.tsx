@@ -62,6 +62,12 @@ export function Header() {
             Siguiendo
           </Link>
           <Link
+            href="/salon"
+            className="hidden text-white/60 transition hover:text-white md:inline"
+          >
+            Salón
+          </Link>          
+          <Link
             href="/como-funciona"
             className="hidden text-white/60 transition hover:text-white md:inline"
           >
