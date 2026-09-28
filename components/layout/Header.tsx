@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { NotificationBell } from './NotificationBell'
 
 export function Header() {
   const router = useRouter()
@@ -66,7 +67,7 @@ export function Header() {
           >
             FAQ
           </Link>
-
+          {!loading && <NotificationBell />}
           {!loading && hasRealAccount && (
             <>
               <Link
