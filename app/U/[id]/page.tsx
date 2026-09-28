@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { createClient } from '@/lib/supabase/client'
+import { isFollowing, followUser, unfollowUser, getFollowCounts } from '@/lib/follows'
 
 type ProfileData = {
   id: string
@@ -52,6 +53,9 @@ function ProfileContent() {
   const [bio, setBio] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
+  const [following, setFollowing] = useState(false)
+  const [followCounts, setFollowCounts] = useState({ followers: 0, following: 0 })
+  const [followLoading, setFollowLoading] = useState(false)
 
   const load = async () => {
     const supabase = createClient()
@@ -84,6 +88,11 @@ function ProfileContent() {
         .order('earned_at', { ascending: false }),
     ])
 
+    const [isFoll, counts] = await Promise.all([
+      isFollowing(userId),
+      getFollowCounts(userId),
+    ])
+
     setProfile(profRes.data)
     setHistory(histRes.data ?? [])
     setGlobalPosition(rankRes.data?.position ?? null)
@@ -94,6 +103,8 @@ function ProfileContent() {
         earned_at: b.earned_at,
       }))
     )
+    setFollowing(isFoll)
+    setFollowCounts(counts)
     setDisplayName(profRes.data?.display_name ?? '')
     setBio(profRes.data?.bio ?? '')
     setLoading(false)
@@ -125,6 +136,25 @@ function ProfileContent() {
     }
     setSaving(false)
     setTimeout(() => setSaveMessage(null), 3000)
+  }
+
+  const handleFollowToggle = async () => {
+    setFollowLoading(true)
+    try {
+      if (following) {
+        await unfollowUser(userId)
+        setFollowing(false)
+        setFollowCounts((c) => ({ ...c, followers: Math.max(0, c.followers - 1) }))
+      } else {
+        await followUser(userId)
+        setFollowing(true)
+        setFollowCounts((c) => ({ ...c, followers: c.followers + 1 }))
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setFollowLoading(false)
+    }
   }
 
   if (loading) {
@@ -207,19 +237,29 @@ function ProfileContent() {
           </div>
         </div>
       ) : (
-        <div className="mb-8 flex items-start justify-between">
-          <div>
+        <div className="mb-8 flex items-start justify-between gap-4">
+          <div className="flex-1">
             <h1 className="text-2xl font-semibold">
               {profile.display_name ?? 'Anónimo'}
             </h1>
             {profile.username && (
               <p className="text-sm text-white/40">@{profile.username}</p>
             )}
+            <div className="mt-2 flex gap-4 text-xs text-white/50">
+              <span>
+                <strong className="text-white/80">{followCounts.followers}</strong>{' '}
+                seguidores
+              </span>
+              <span>
+                <strong className="text-white/80">{followCounts.following}</strong>{' '}
+                siguiendo
+              </span>
+            </div>
             {profile.bio && (
               <p className="mt-3 max-w-lg text-sm text-white/60">{profile.bio}</p>
             )}
           </div>
-          <div className="flex items-start gap-3">
+          <div className="flex flex-wrap items-start gap-2">
             {isOwner && (
               <button
                 onClick={() => setEditing(true)}
@@ -229,12 +269,25 @@ function ProfileContent() {
               </button>
             )}
             {!isOwner && (
-              <Link
-                href={`/comparar/${userId}`}
-                className="rounded-md border border-white/10 px-3 py-1.5 text-xs text-white/60 transition hover:bg-white/10"
-              >
-                Comparar conmigo
-              </Link>
+              <>
+                <button
+                  onClick={handleFollowToggle}
+                  disabled={followLoading}
+                  className={`rounded-md px-3 py-1.5 text-xs transition disabled:opacity-50 ${
+                    following
+                      ? 'border border-white/10 text-white/60 hover:bg-white/10'
+                      : 'bg-white font-medium text-black hover:bg-white/90'
+                  }`}
+                >
+                  {followLoading ? '...' : following ? 'Siguiendo' : 'Seguir'}
+                </button>
+                <Link
+                  href={`/comparar/${userId}`}
+                  className="rounded-md border border-white/10 px-3 py-1.5 text-xs text-white/60 transition hover:bg-white/10"
+                >
+                  Comparar
+                </Link>
+              </>
             )}
             {globalPosition && (
               <div className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-right">
