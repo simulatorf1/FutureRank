@@ -56,6 +56,12 @@ export function Header() {
             Ranking
           </Link>
           <Link
+            href="/siguiendo"
+            className="hidden text-white/60 transition hover:text-white sm:inline"
+          >
+            Siguiendo
+          </Link>
+          <Link
             href="/como-funciona"
             className="hidden text-white/60 transition hover:text-white md:inline"
           >
