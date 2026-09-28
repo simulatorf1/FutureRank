@@ -6,7 +6,9 @@ export type QuestionWithOptions = {
   description: string | null
   resolution_date: string
   status: string
+  category_id: number
   category_name: string
+  category_slug: string
   options: { id: number; text: string; position: number }[]
 }
 
@@ -49,8 +51,8 @@ export async function getQuestionBySlugOrId(id: number): Promise<QuestionWithOpt
   const { data: question, error } = await supabase
     .from('questions')
     .select(`
-      id, title, description, resolution_date, status,
-      categories!questions_category_id_fkey(name),
+      id, title, description, resolution_date, status, category_id,
+      categories!questions_category_id_fkey(name, slug),
       question_options!question_options_question_id_fkey(id, text, position)
     `)
     .eq('id', id)
@@ -58,13 +60,18 @@ export async function getQuestionBySlugOrId(id: number): Promise<QuestionWithOpt
 
   if (error || !question) return null
 
+  const cats = question.categories as any
+  const catObj = Array.isArray(cats) ? cats[0] : cats
+
   return {
     id: question.id,
     title: question.title,
     description: question.description,
     resolution_date: question.resolution_date,
     status: question.status,
-    category_name: (question.categories as any)?.name ?? '',
+    category_id: question.category_id,
+    category_name: catObj?.name ?? '',
+    category_slug: catObj?.slug ?? '',
     options: (question.question_options as any[])?.sort((a, b) => a.position - b.position) ?? [],
   }
 }
