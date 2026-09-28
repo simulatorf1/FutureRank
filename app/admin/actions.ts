@@ -133,3 +133,49 @@ export async function deleteQuestion(formData: FormData) {
   revalidatePath('/admin')
   return { success: true }
 }
+// ---- Crear o actualizar anuncio ----
+export async function saveAd(formData: FormData) {
+  const password = formData.get('password') as string
+  const slot = formData.get('slot') as string
+  const content = formData.get('content') as string
+  const linkUrl = formData.get('linkUrl') as string
+
+  if (!checkPassword(password)) return { error: 'Contraseña incorrecta' }
+
+  const supabase = getAdminClient()
+
+  const { error } = await supabase.from('ads').upsert(
+    {
+      slot,
+      content: content.trim(),
+      link_url: linkUrl.trim() || null,
+      is_active: true,
+    },
+    { onConflict: 'slot' }
+  )
+
+  if (error) return { error: error.message }
+  revalidatePath('/admin')
+  revalidatePath('/')
+  return { success: true }
+}
+
+// ---- Desactivar anuncio ----
+export async function toggleAd(formData: FormData) {
+  const password = formData.get('password') as string
+  const adId = Number(formData.get('adId'))
+  const isActive = formData.get('isActive') === 'true'
+
+  if (!checkPassword(password)) return { error: 'Contraseña incorrecta' }
+
+  const supabase = getAdminClient()
+  const { error } = await supabase
+    .from('ads')
+    .update({ is_active: !isActive, updated_at: new Date().toISOString() })
+    .eq('id', adId)
+
+  if (error) return { error: error.message }
+  revalidatePath('/admin')
+  revalidatePath('/')
+  return { success: true }
+}
