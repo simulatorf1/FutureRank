@@ -614,14 +614,48 @@ export type QuestionListItem = {
 
 export async function listQuestions({
   status = 'all',
+  search = '',
+  categorySlug = '',
+  subcategorySlug = '',
+  sort = 'recent',
   page = 1,
   pageSize = 20,
 }: {
   status?: 'all' | 'open' | 'closed' | 'resolved'
+  search?: string
+  categorySlug?: string
+  subcategorySlug?: string
+  sort?: 'recent' | 'oldest' | 'closing' | 'alpha'
   page?: number
   pageSize?: number
 }): Promise<{ items: QuestionListItem[]; total: number }> {
   const supabase = createClient()
+
+  let categoryIds: number[] = []
+
+  // Resolver categorías/subcategorías a IDs
+  if (subcategorySlug) {
+    const { data: cat } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('slug', subcategorySlug)
+      .maybeSingle()
+    if (cat) categoryIds = [cat.id]
+  } else if (categorySlug) {
+    const { data: cat } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('slug', categorySlug)
+      .maybeSingle()
+
+    if (cat) {
+      const { data: subs } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('parent_id', cat.id)
+      categoryIds = [cat.id, ...(subs ?? []).map((s) => s.id)]
+    }
+  }
 
   let query = supabase
     .from('questions')
@@ -644,12 +678,30 @@ export async function listQuestions({
     query = query.eq('status', 'resolved')
   }
 
+  if (categoryIds.length > 0) {
+    query = query.in('category_id', categoryIds)
+  }
+
+  if (search.trim()) {
+    const term = search.trim().replace(/[%_]/g, '')
+    query = query.or(`title.ilike.%${term}%,description.ilike.%${term}%`)
+  }
+
+  // Ordenación
+  if (sort === 'oldest') {
+    query = query.order('created_at', { ascending: true })
+  } else if (sort === 'closing') {
+    query = query.order('resolution_date', { ascending: true })
+  } else if (sort === 'alpha') {
+    query = query.order('title', { ascending: true })
+  } else {
+    query = query.order('created_at', { ascending: false })
+  }
+
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
-  const { data, count, error } = await query
-    .order('created_at', { ascending: false })
-    .range(from, to)
+  const { data, count, error } = await query.range(from, to)
 
   if (error || !data) return { items: [], total: 0 }
 
