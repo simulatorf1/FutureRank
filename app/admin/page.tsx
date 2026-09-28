@@ -3,12 +3,15 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Header } from '@/components/layout/Header'
+import { Footer } from '@/components/layout/Footer'
 import {
   closeQuestion,
   reopenQuestion,
   resolveQuestion,
   updateQuestion,
   deleteQuestion,
+  saveAd,
+  toggleAd,
 } from './actions'
 
 type AdminQuestion = {
@@ -25,24 +28,38 @@ type AdminQuestion = {
 
 type Category = { id: number; name: string; slug: string }
 
+type Ad = {
+  id: number
+  slot: string
+  content: string
+  link_url: string | null
+  is_active: boolean
+}
+
 const STATUS_LABEL: Record<string, string> = {
   open: 'Abierta',
   closed: 'Cerrada',
   resolved: 'Resuelta',
 }
 
+const AD_SLOTS = ['home_sidebar', 'home_bottom', 'question_sidebar', 'question_bottom']
+
 export default function AdminPage() {
   const [password, setPassword] = useState('')
   const [authed, setAuthed] = useState(false)
+  const [view, setView] = useState<'questions' | 'ads'>('questions')
+
   const [questions, setQuestions] = useState<AdminQuestion[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [ads, setAds] = useState<Ad[]>([])
   const [filter, setFilter] = useState<string>('all')
   const [message, setMessage] = useState<string | null>(null)
   const [editing, setEditing] = useState<number | null>(null)
 
-  const load = async () => {
+  const loadAll = async () => {
     const supabase = createClient()
-    const [qRes, cRes] = await Promise.all([
+
+    const [qRes, cRes, aRes] = await Promise.all([
       supabase
         .from('questions')
         .select(`
@@ -56,6 +73,10 @@ export default function AdminPage() {
         .select('id, name, slug')
         .not('parent_id', 'is', null)
         .order('name'),
+      supabase
+        .from('ads')
+        .select('id, slot, content, link_url, is_active')
+        .order('slot'),
     ])
 
     setQuestions(
@@ -65,10 +86,11 @@ export default function AdminPage() {
       }))
     )
     setCategories(cRes.data ?? [])
+    setAds(aRes.data ?? [])
   }
 
   useEffect(() => {
-    if (authed) load()
+    if (authed) loadAll()
   }, [authed])
 
   const handleAuth = (e: React.FormEvent) => {
@@ -85,7 +107,7 @@ export default function AdminPage() {
       setMessage(`Error: ${result.error}`)
     } else {
       setMessage('Acción completada')
-      await load()
+      await loadAll()
     }
     setTimeout(() => setMessage(null), 3000)
   }
@@ -113,12 +135,15 @@ export default function AdminPage() {
             </button>
           </form>
         </main>
+        <Footer />
       </>
     )
   }
 
   const filtered =
     filter === 'all' ? questions : questions.filter((q) => q.status === filter)
+
+  const findAd = (slot: string) => ads.find((a) => a.slot === slot) ?? null
 
   return (
     <>
@@ -132,196 +157,311 @@ export default function AdminPage() {
           </div>
         )}
 
-        <div className="mb-6 flex flex-wrap gap-2">
-          {['all', 'open', 'closed', 'resolved'].map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`rounded-full px-4 py-1.5 text-sm transition ${
-                filter === f
-                  ? 'bg-white text-black'
-                  : 'border border-white/10 bg-white/5 text-white/60 hover:bg-white/10'
-              }`}
-            >
-              {f === 'all' ? 'Todas' : STATUS_LABEL[f]}
-            </button>
-          ))}
+        {/* Selector de vista */}
+        <div className="mb-6 flex gap-2 border-b border-white/10 pb-3">
+          <button
+            onClick={() => setView('questions')}
+            className={`rounded-md px-3 py-1.5 text-sm ${
+              view === 'questions'
+                ? 'bg-white/10 text-white'
+                : 'text-white/40 hover:text-white'
+            }`}
+          >
+            Preguntas
+          </button>
+          <button
+            onClick={() => setView('ads')}
+            className={`rounded-md px-3 py-1.5 text-sm ${
+              view === 'ads' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white'
+            }`}
+          >
+            Anuncios
+          </button>
         </div>
 
-        <div className="space-y-4">
-          {filtered.map((q) => (
-            <div key={q.id} className="rounded-lg border border-white/10 bg-white/5 p-4">
-              <div className="mb-3 flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className="mb-1 flex items-center gap-2 text-xs">
-                    <span className="rounded bg-white/10 px-2 py-0.5">
-                      {STATUS_LABEL[q.status]}
-                    </span>
-                    <span className="text-white/40">id {q.id}</span>
-                  </div>
-                  <h3 className="font-medium">{q.title}</h3>
-                  <p className="mt-1 text-xs text-white/40">
-                    Cierra el {new Date(q.resolution_date).toLocaleString('es-ES')}
-                  </p>
-                </div>
+        {view === 'questions' && (
+          <>
+            <div className="mb-6 flex flex-wrap gap-2">
+              {['all', 'open', 'closed', 'resolved'].map((f) => (
                 <button
-                  onClick={() => setEditing(editing === q.id ? null : q.id)}
-                  className="rounded border border-white/10 px-3 py-1 text-xs text-white/60 hover:bg-white/10"
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`rounded-full px-4 py-1.5 text-sm transition ${
+                    filter === f
+                      ? 'bg-white text-black'
+                      : 'border border-white/10 bg-white/5 text-white/60 hover:bg-white/10'
+                  }`}
                 >
-                  {editing === q.id ? 'Cancelar' : 'Editar'}
+                  {f === 'all' ? 'Todas' : STATUS_LABEL[f]}
                 </button>
-              </div>
+              ))}
+            </div>
 
-              {editing === q.id ? (
-                <form
-                  action={(fd) => {
-                    fd.set('password', password)
-                    fd.set('questionId', String(q.id))
-                    return runAction(updateQuestion, fd)
-                  }}
-                  className="space-y-3 border-t border-white/10 pt-3"
+            <div className="space-y-4">
+              {filtered.map((q) => (
+                <div
+                  key={q.id}
+                  className="rounded-lg border border-white/10 bg-white/5 p-4"
                 >
-                  <input
-                    name="title"
-                    defaultValue={q.title}
-                    required
-                    className="w-full rounded border border-white/10 bg-black/20 px-3 py-2 text-sm"
-                  />
-                  <textarea
-                    name="description"
-                    defaultValue={q.description ?? ''}
-                    rows={2}
-                    className="w-full rounded border border-white/10 bg-black/20 px-3 py-2 text-sm"
-                  />
-                  <select
-                    name="categoryId"
-                    defaultValue={q.category_id}
-                    className="w-full rounded border border-white/10 bg-black/20 px-3 py-2 text-sm"
-                  >
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id} className="bg-black">
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="datetime-local"
-                    name="resolutionDate"
-                    defaultValue={q.resolution_date.slice(0, 16)}
-                    required
-                    className="w-full rounded border border-white/10 bg-black/20 px-3 py-2 text-sm"
-                  />
-                  <input
-                    name="verificationSource"
-                    defaultValue={q.verification_source ?? ''}
-                    placeholder="Fuente de verificación"
-                    className="w-full rounded border border-white/10 bg-black/20 px-3 py-2 text-sm"
-                  />
-                  <div className="space-y-2">
-                    {q.options.map((opt) => (
-                      <div key={opt.id} className="flex gap-2">
-                        <input type="hidden" name="optionId[]" value={opt.id} />
-                        <input
-                          name="optionText[]"
-                          defaultValue={opt.text}
-                          className="flex-1 rounded border border-white/10 bg-black/20 px-3 py-2 text-sm"
-                        />
+                  <div className="mb-3 flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="mb-1 flex items-center gap-2 text-xs">
+                        <span className="rounded bg-white/10 px-2 py-0.5">
+                          {STATUS_LABEL[q.status]}
+                        </span>
+                        <span className="text-white/40">id {q.id}</span>
                       </div>
-                    ))}
-                  </div>
-                  <button
-                    type="submit"
-                    className="rounded bg-white px-4 py-2 text-sm font-medium text-black"
-                  >
-                    Guardar cambios
-                  </button>
-                </form>
-              ) : (
-                <>
-                  <div className="mb-3 space-y-1 text-sm">
-                    {q.options.map((opt) => (
-                      <div key={opt.id} className="text-white/60">
-                        • {opt.text}
-                        {q.resolved_option_id === opt.id && (
-                          <span className="ml-2 text-green-400">✓ correcta</span>
-                        )}
-                      </div>
-                    ))}
+                      <h3 className="font-medium">{q.title}</h3>
+                      <p className="mt-1 text-xs text-white/40">
+                        Cierra el {new Date(q.resolution_date).toLocaleString('es-ES')}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setEditing(editing === q.id ? null : q.id)}
+                      className="rounded border border-white/10 px-3 py-1 text-xs text-white/60 hover:bg-white/10"
+                    >
+                      {editing === q.id ? 'Cancelar' : 'Editar'}
+                    </button>
                   </div>
 
-                  <div className="flex flex-wrap gap-2 border-t border-white/10 pt-3">
-                    {q.status === 'open' && (
-                      <form
-                        action={(fd) => {
-                          fd.set('password', password)
-                          fd.set('questionId', String(q.id))
-                          return runAction(closeQuestion, fd)
-                        }}
+                  {editing === q.id ? (
+                    <form
+                      action={(fd) => {
+                        fd.set('password', password)
+                        fd.set('questionId', String(q.id))
+                        return runAction(updateQuestion, fd)
+                      }}
+                      className="space-y-3 border-t border-white/10 pt-3"
+                    >
+                      <input
+                        name="title"
+                        defaultValue={q.title}
+                        required
+                        className="w-full rounded border border-white/10 bg-black/20 px-3 py-2 text-sm"
+                      />
+                      <textarea
+                        name="description"
+                        defaultValue={q.description ?? ''}
+                        rows={2}
+                        className="w-full rounded border border-white/10 bg-black/20 px-3 py-2 text-sm"
+                      />
+                      <select
+                        name="categoryId"
+                        defaultValue={q.category_id}
+                        className="w-full rounded border border-white/10 bg-black/20 px-3 py-2 text-sm"
                       >
-                        <button className="rounded border border-white/10 px-3 py-1 text-xs hover:bg-white/10">
-                          Cerrar
-                        </button>
-                      </form>
-                    )}
-                  
-                    {(q.status === 'closed' || q.status === 'resolved') && (
-                      <form
-                        action={(fd) => {
-                          fd.set('password', password)
-                          fd.set('questionId', String(q.id))
-                          return runAction(reopenQuestion, fd)
-                        }}
-                      >
-                        <button className="rounded border border-white/10 px-3 py-1 text-xs hover:bg-white/10">
-                          Reabrir
-                        </button>
-                      </form>
-                    )}
-                  
-                    {q.status !== 'resolved' && (
-                      <>
-                        <span className="self-center text-xs text-white/40">Resolver con:</span>
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.id} className="bg-black">
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="datetime-local"
+                        name="resolutionDate"
+                        defaultValue={q.resolution_date.slice(0, 16)}
+                        required
+                        className="w-full rounded border border-white/10 bg-black/20 px-3 py-2 text-sm"
+                      />
+                      <input
+                        name="verificationSource"
+                        defaultValue={q.verification_source ?? ''}
+                        placeholder="Fuente de verificación"
+                        className="w-full rounded border border-white/10 bg-black/20 px-3 py-2 text-sm"
+                      />
+                      <div className="space-y-2">
                         {q.options.map((opt) => (
+                          <div key={opt.id} className="flex gap-2">
+                            <input type="hidden" name="optionId[]" value={opt.id} />
+                            <input
+                              name="optionText[]"
+                              defaultValue={opt.text}
+                              className="flex-1 rounded border border-white/10 bg-black/20 px-3 py-2 text-sm"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        type="submit"
+                        className="rounded bg-white px-4 py-2 text-sm font-medium text-black"
+                      >
+                        Guardar cambios
+                      </button>
+                    </form>
+                  ) : (
+                    <>
+                      <div className="mb-3 space-y-1 text-sm">
+                        {q.options.map((opt) => (
+                          <div key={opt.id} className="text-white/60">
+                            • {opt.text}
+                            {q.resolved_option_id === opt.id && (
+                              <span className="ml-2 text-green-400">✓ correcta</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 border-t border-white/10 pt-3">
+                        {q.status === 'open' && (
                           <form
-                            key={opt.id}
                             action={(fd) => {
                               fd.set('password', password)
                               fd.set('questionId', String(q.id))
-                              fd.set('optionId', String(opt.id))
-                              return runAction(resolveQuestion, fd)
+                              return runAction(closeQuestion, fd)
                             }}
                           >
-                            <button className="rounded bg-green-500/20 px-3 py-1 text-xs text-green-300 hover:bg-green-500/30">
-                              {opt.text}
+                            <button className="rounded border border-white/10 px-3 py-1 text-xs hover:bg-white/10">
+                              Cerrar
                             </button>
                           </form>
-                        ))}
-                      </>
-                    )}
-                  
-                    <form
-                      action={(fd) => {
-                        if (!confirm('¿Eliminar esta pregunta definitivamente?')) return
-                        fd.set('password', password)
-                        fd.set('questionId', String(q.id))
-                        return runAction(deleteQuestion, fd)
-                      }}
-                    >
-                      <button className="rounded border border-red-500/30 px-3 py-1 text-xs text-red-400 hover:bg-red-500/10">
-                        Eliminar
-                      </button>
-                    </form>
-                  </div>
-                </>
+                        )}
+
+                        {(q.status === 'closed' || q.status === 'resolved') && (
+                          <form
+                            action={(fd) => {
+                              fd.set('password', password)
+                              fd.set('questionId', String(q.id))
+                              return runAction(reopenQuestion, fd)
+                            }}
+                          >
+                            <button className="rounded border border-white/10 px-3 py-1 text-xs hover:bg-white/10">
+                              Reabrir
+                            </button>
+                          </form>
+                        )}
+
+                        {q.status !== 'resolved' && (
+                          <>
+                            <span className="self-center text-xs text-white/40">
+                              Resolver con:
+                            </span>
+                            {q.options.map((opt) => (
+                              <form
+                                key={opt.id}
+                                action={(fd) => {
+                                  fd.set('password', password)
+                                  fd.set('questionId', String(q.id))
+                                  fd.set('optionId', String(opt.id))
+                                  return runAction(resolveQuestion, fd)
+                                }}
+                              >
+                                <button className="rounded bg-green-500/20 px-3 py-1 text-xs text-green-300 hover:bg-green-500/30">
+                                  {opt.text}
+                                </button>
+                              </form>
+                            ))}
+                          </>
+                        )}
+
+                        <form
+                          action={(fd) => {
+                            if (!confirm('¿Eliminar esta pregunta definitivamente?')) return
+                            fd.set('password', password)
+                            fd.set('questionId', String(q.id))
+                            return runAction(deleteQuestion, fd)
+                          }}
+                        >
+                          <button className="rounded border border-red-500/30 px-3 py-1 text-xs text-red-400 hover:bg-red-500/10">
+                            Eliminar
+                          </button>
+                        </form>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+
+              {filtered.length === 0 && (
+                <p className="text-sm text-white/40">No hay preguntas con este filtro.</p>
               )}
             </div>
-          ))}
+          </>
+        )}
 
-          {filtered.length === 0 && (
-            <p className="text-sm text-white/40">No hay preguntas con este filtro.</p>
-          )}
-        </div>
+        {view === 'ads' && (
+          <div className="space-y-6">
+            <p className="text-sm text-white/60">
+              Configura el contenido que aparece en cada hueco publicitario. Si dejas un
+              slot vacío, no se muestra nada en la web.
+            </p>
+
+            {AD_SLOTS.map((slot) => {
+              const current = findAd(slot)
+              return (
+                <div
+                  key={slot}
+                  className="rounded-lg border border-white/10 bg-white/5 p-4"
+                >
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="text-sm font-medium">
+                      Slot: <span className="text-white/50">{slot}</span>
+                    </h3>
+                    {current && (
+                      <span
+                        className={`rounded px-2 py-0.5 text-xs ${
+                          current.is_active
+                            ? 'bg-green-500/20 text-green-300'
+                            : 'bg-white/10 text-white/40'
+                        }`}
+                      >
+                        {current.is_active ? 'Activo' : 'Inactivo'}
+                      </span>
+                    )}
+                  </div>
+
+                  <form
+                    action={(fd) => {
+                      fd.set('password', password)
+                      fd.set('slot', slot)
+                      return runAction(saveAd, fd)
+                    }}
+                    className="space-y-2"
+                  >
+                    <textarea
+                      name="content"
+                      defaultValue={current?.content ?? ''}
+                      placeholder="Contenido (texto o HTML simple)"
+                      rows={2}
+                      className="w-full rounded border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"
+                    />
+                    <input
+                      type="url"
+                      name="linkUrl"
+                      defaultValue={current?.link_url ?? ''}
+                      placeholder="Enlace (opcional)"
+                      className="w-full rounded border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="submit"
+                        className="rounded bg-white px-4 py-2 text-sm font-medium text-black"
+                      >
+                        Guardar
+                      </button>
+                      {current && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const fd = new FormData()
+                            fd.set('password', password)
+                            fd.set('adId', String(current.id))
+                            fd.set('isActive', String(current.is_active))
+                            await runAction(toggleAd, fd)
+                          }}
+                          className="rounded border border-white/10 px-4 py-2 text-sm text-white/70 hover:bg-white/10"
+                        >
+                          {current.is_active ? 'Desactivar' : 'Activar'}
+                        </button>
+                      )}
+                    </div>
+                  </form>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </main>
+      <Footer />
     </>
   )
 }
