@@ -21,24 +21,30 @@ export async function generateMetadata({
     .eq('id', Number(id))
     .maybeSingle()
 
-  if (!q) {
-    return { title: 'Pregunta no encontrada' }
-  }
-
-  const desc = q.description ?? 'Vota esta predicción en FutureRank'
+  const desc = q?.description ?? 'Vota esta predicción en FutureRank'
+  const title = q?.title ?? 'Pregunta'
 
   return {
-    title: q.title,
+    title,
     description: desc,
     openGraph: {
-      title: q.title,
+      title,
       description: desc,
       type: 'article',
+      images: [
+        {
+          url: '/opengraph-image.png',
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
-      title: q.title,
+      title,
       description: desc,
+      images: ['/opengraph-image.png'],
     },
   }
 }
