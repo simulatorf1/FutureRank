@@ -41,11 +41,7 @@ export function AdSlot({ slot }: { slot: string }) {
 
   if (!ad) return null
 
-  const inner = (
-    <div className="rounded-lg border border-white/10 bg-white/5 p-4 text-sm text-white/70">
-      {ad.content}
-    </div>
-  )
+  const html = <div dangerouslySetInnerHTML={{ __html: ad.content }} />
 
   if (ad.link_url) {
     return (
@@ -53,12 +49,12 @@ export function AdSlot({ slot }: { slot: string }) {
         href={ad.link_url}
         target="_blank"
         rel="noopener noreferrer"
-        className="block transition hover:opacity-80"
+        className="block transition hover:opacity-90"
       >
-        {inner}
+        {html}
       </a>
     )
   }
 
-  return inner
+  return html
 }
