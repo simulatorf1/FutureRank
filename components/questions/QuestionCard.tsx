@@ -3,6 +3,7 @@ import Link from 'next/link'
 type Props = {
   id: number
   title: string
+  description?: string | null
   categoryName: string
   resolutionDate: string
   status: string
@@ -23,6 +24,7 @@ function timeUntil(dateStr: string) {
 export function QuestionCard({
   id,
   title,
+  description,
   categoryName,
   resolutionDate,
   status,
@@ -38,7 +40,7 @@ export function QuestionCard({
   return (
     <Link
       href={`/pregunta/${id}`}
-      className="block rounded-lg border border-white/10 bg-white/5 p-4 transition hover:border-white/20 hover:bg-white/10"
+      className="group flex flex-col rounded-lg border border-white/10 bg-white/5 p-4 transition hover:border-white/20 hover:bg-white/10"
     >
       <div className="mb-2 flex items-center justify-between text-xs">
         <span className="uppercase tracking-wide text-white/40">{categoryName}</span>
@@ -50,12 +52,19 @@ export function QuestionCard({
             : `Cierra ${timeUntil(resolutionDate)}`}
         </span>
       </div>
+
       <h3 className="font-medium leading-snug">{title}</h3>
+
+      {description && (
+        <p className="mt-2 line-clamp-2 text-xs text-white/50">{description}</p>
+      )}
+
       {status === 'resolved' && resolvedOptionText && (
         <div className="mt-2 text-xs text-green-400">✓ {resolvedOptionText}</div>
       )}
+
       {status === 'open' && (
-        <div className="mt-2 text-xs text-white/30">Cierra el {dateStr}</div>
+        <div className="mt-auto pt-3 text-xs text-white/30">Cierra el {dateStr}</div>
       )}
     </Link>
   )
