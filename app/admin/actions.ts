@@ -179,3 +179,134 @@ export async function toggleAd(formData: FormData) {
   revalidatePath('/')
   return { success: true }
 }
+// ---- Estadísticas del panel ----
+export async function getAdminStats() {
+  const supabase = getAdminClient()
+
+  const now = new Date()
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
+  const yesterdayStart = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() - 1
+  ).toISOString()
+
+  const [
+    qTotal,
+    vTotal,
+    uTotal,
+    cTotal,
+    votesByDay,
+    usersByDay,
+    topQuestions,
+    topCategories,
+    votesToday,
+    votesYesterday,
+  ] = await Promise.all([
+    supabase.from('questions').select('id', { count: 'exact', head: true }),
+    supabase.from('votes').select('id', { count: 'exact', head: true }),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }),
+    supabase.from('comments').select('id', { count: 'exact', head: true }),
+
+    supabase
+      .from('votes')
+      .select('created_at')
+      .gte('created_at', sevenDaysAgo.toISOString()),
+
+    supabase
+      .from('profiles')
+      .select('created_at')
+      .gte('created_at', sevenDaysAgo.toISOString()),
+
+    supabase
+      .from('votes')
+      .select('question_id, questions!votes_question_id_fkey(title)')
+      .gte('created_at', sevenDaysAgo.toISOString()),
+
+    supabase
+      .from('votes')
+      .select(`
+        question_id,
+        questions!votes_question_id_fkey(
+          category_id,
+          categories!questions_category_id_fkey(name)
+        )
+      `)
+      .gte('created_at', sevenDaysAgo.toISOString()),
+
+    supabase
+      .from('votes')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', todayStart),
+
+    supabase
+      .from('votes')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', yesterdayStart)
+      .lt('created_at', todayStart),
+  ])
+
+  // Agrupar votos por día
+  const votesByDayMap: Record<string, number> = {}
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000)
+    const key = d.toISOString().slice(0, 10)
+    votesByDayMap[key] = 0
+  }
+  for (const v of votesByDay.data ?? []) {
+    const key = v.created_at.slice(0, 10)
+    if (key in votesByDayMap) votesByDayMap[key]++
+  }
+
+  // Agrupar usuarios por día
+  const usersByDayMap: Record<string, number> = {}
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000)
+    const key = d.toISOString().slice(0, 10)
+    usersByDayMap[key] = 0
+  }
+  for (const u of usersByDay.data ?? []) {
+    const key = u.created_at.slice(0, 10)
+    if (key in usersByDayMap) usersByDayMap[key]++
+  }
+
+  // Top preguntas
+  const qCounts: Record<number, { count: number; title: string }> = {}
+  for (const v of topQuestions.data ?? []) {
+    const qid = v.question_id
+    const title = (v as any).questions?.title ?? '—'
+    if (!qCounts[qid]) qCounts[qid] = { count: 0, title }
+    qCounts[qid].count++
+  }
+  const topQ = Object.entries(qCounts)
+    .map(([id, val]) => ({ id: Number(id), ...val }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5)
+
+  // Top categorías
+  const catCounts: Record<string, number> = {}
+  for (const v of topCategories.data ?? []) {
+    const name = (v as any).questions?.categories?.name ?? 'Sin categoría'
+    catCounts[name] = (catCounts[name] ?? 0) + 1
+  }
+  const topCat = Object.entries(catCounts)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5)
+
+  return {
+    totals: {
+      questions: qTotal.count ?? 0,
+      votes: vTotal.count ?? 0,
+      users: uTotal.count ?? 0,
+      comments: cTotal.count ?? 0,
+    },
+    votesByDay: Object.entries(votesByDayMap).map(([date, count]) => ({ date, count })),
+    usersByDay: Object.entries(usersByDayMap).map(([date, count]) => ({ date, count })),
+    topQuestions: topQ,
+    topCategories: topCat,
+    votesToday: votesToday.count ?? 0,
+    votesYesterday: votesYesterday.count ?? 0,
+  }
+}
