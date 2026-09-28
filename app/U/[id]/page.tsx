@@ -364,3 +364,111 @@ export default function ProfilePage() {
     </>
   )
 }
+export type HeadToHead = {
+  me: {
+    id: string
+    display_name: string | null
+    total_predictions: number
+    total_correct: number
+    total_points: number
+    current_streak: number
+  }
+  them: {
+    id: string
+    display_name: string | null
+    total_predictions: number
+    total_correct: number
+    total_points: number
+    current_streak: number
+  }
+  sharedQuestions: {
+    question_id: number
+    question_title: string
+    i_was_correct: boolean
+    they_were_correct: boolean
+    my_points: number
+    their_points: number
+  }[]
+  score: { me: number; them: number }
+}
+
+export async function getHeadToHead(theirId: string): Promise<HeadToHead | null> {
+  const supabase = createClient()
+
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) return null
+  const myId = session.user.id
+
+  if (myId === theirId) return null
+
+  // Perfiles
+  const [meRes, themRes] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', myId).maybeSingle(),
+    supabase.from('profiles').select('*').eq('id', theirId).maybeSingle(),
+  ])
+
+  if (!meRes.data || !themRes.data) return null
+
+  // Scoring events compartidos
+  const [myEventsRes, theirEventsRes] = await Promise.all([
+    supabase
+      .from('scoring_events')
+      .select('question_id, points, is_correct, questions!scoring_events_question_id_fkey(title)')
+      .eq('user_id', myId),
+    supabase
+      .from('scoring_events')
+      .select('question_id, points, is_correct')
+      .eq('user_id', theirId),
+  ])
+
+  const myEvents = myEventsRes.data ?? []
+  const theirEvents = theirEventsRes.data ?? []
+
+  const theirMap = new Map(theirEvents.map((e: any) => [e.question_id, e]))
+
+  const sharedQuestions: HeadToHead['sharedQuestions'] = []
+  let scoreMe = 0
+  let scoreThem = 0
+
+  for (const mine of myEvents) {
+    const theirs = theirMap.get(mine.question_id)
+    if (!theirs) continue
+
+    const iCorrect = mine.is_correct
+    const theyCorrect = theirs.is_correct
+    if (iCorrect && !theyCorrect) scoreMe++
+    if (theyCorrect && !iCorrect) scoreThem++
+
+    sharedQuestions.push({
+      question_id: mine.question_id,
+      question_title: (mine as any).questions?.title ?? '—',
+      i_was_correct: iCorrect,
+      they_were_correct: theyCorrect,
+      my_points: mine.points,
+      their_points: theirs.points,
+    })
+  }
+
+  sharedQuestions.sort((a, b) => b.question_id - a.question_id)
+
+  return {
+    me: {
+      id: myId,
+      display_name: meRes.data.display_name,
+      total_predictions: meRes.data.total_predictions,
+      total_correct: meRes.data.total_correct,
+      total_points: meRes.data.total_points,
+      current_streak: meRes.data.current_streak,
+    },
+    them: {
+      id: theirId,
+      display_name: themRes.data.display_name,
+      total_predictions: themRes.data.total_predictions,
+      total_correct: themRes.data.total_correct,
+      total_points: themRes.data.total_points,
+      current_streak: themRes.data.current_streak,
+    },
+    sharedQuestions,
+    score: { me: scoreMe, them: scoreThem },
+  }
+}
