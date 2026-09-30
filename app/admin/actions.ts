@@ -311,22 +311,21 @@ export async function getAdminStats() {
   }
 }
 // ---- Analytics ----
-export async function getAnalytics() {
+export async function getAnalytics(days: number = 30) {
   const supabase = getAdminClient()
 
-  const [visits, sources, pages, retention, cities, devices, visitors, hours, uniques] =
+  const [visits, sources, pages, retention, cities, devices, visitors, hours] =
     await Promise.all([
-      supabase.rpc('get_visits_by_day', { p_days: 30 }),
-      supabase.rpc('get_traffic_sources', { p_days: 30 }),
-      supabase.rpc('get_top_pages', { p_days: 30, p_limit: 20 }),
-      supabase.rpc('get_retention', { p_days: 30 }),
-      supabase.rpc('get_top_cities', { p_days: 30, p_limit: 10 }),
-      supabase.rpc('get_device_breakdown', { p_days: 30 }),
-      supabase.rpc('get_visitor_breakdown', { p_days: 30 }),
-      supabase.rpc('get_visits_by_hour', { p_days: 7 }),
-      supabase.rpc('get_unique_visitors', { p_days: 30 }),
+      supabase.rpc('get_visits_by_day', { p_days: days }),
+      supabase.rpc('get_traffic_sources', { p_days: days }),
+      supabase.rpc('get_top_pages', { p_days: days, p_limit: 20 }),
+      supabase.rpc('get_retention', { p_days: days }),
+      supabase.rpc('get_top_cities', { p_days: days, p_limit: 10 }),
+      supabase.rpc('get_device_breakdown', { p_days: days }),
+      supabase.rpc('get_visitor_breakdown', { p_days: days }),
+      supabase.rpc('get_visits_by_hour', { p_days: days }),
     ])
-  
+
   return {
     visits: visits.data ?? [],
     sources: sources.data ?? [],
@@ -336,6 +335,5 @@ export async function getAnalytics() {
     devices: devices.data ?? [],
     visitors: visitors.data ?? [],
     hours: hours.data ?? [],
-    uniques: uniques.data ?? [],
   }
 }
