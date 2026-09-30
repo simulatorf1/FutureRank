@@ -63,6 +63,7 @@ export default function AdminPage() {
 
   const [analytics, setAnalytics] = useState<any>(null)
   const [loadingAnalytics, setLoadingAnalytics] = useState(false)
+  const [trafficRange, setTrafficRange] = useState<number>(30)
 
   const loadAll = async () => {
     const supabase = createClient()
@@ -113,11 +114,11 @@ export default function AdminPage() {
   useEffect(() => {
     if (view !== 'traffic' || !authed) return
     setLoadingAnalytics(true)
-    getAnalytics().then((a) => {
+    getAnalytics(trafficRange).then((a) => {
       setAnalytics(a)
       setLoadingAnalytics(false)
     })
-  }, [view, authed])
+  }, [view, authed, trafficRange])
 
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault()
@@ -589,6 +590,28 @@ export default function AdminPage() {
 
         {view === 'traffic' && (
           <div className="space-y-8">
+            {/* Selector de rango */}
+            <div className="flex flex-wrap gap-2">
+              {[
+                { label: 'Hoy', value: 1 },
+                { label: 'Últimos 7 días', value: 7 },
+                { label: 'Últimos 30 días', value: 30 },
+                { label: 'Todo', value: 3650 },
+              ].map((r) => (
+                <button
+                  key={r.value}
+                  onClick={() => setTrafficRange(r.value)}
+                  className={`rounded-full px-4 py-1.5 text-sm transition ${
+                    trafficRange === r.value
+                      ? 'bg-white text-black'
+                      : 'border border-white/10 bg-white/5 text-white/60 hover:bg-white/10'
+                  }`}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+
             {loadingAnalytics || !analytics ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
@@ -597,17 +620,30 @@ export default function AdminPage() {
               </div>
             ) : (
               <>
-                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-                  <h3 className="mb-4 text-sm font-medium text-white/80">
-                    Visitas últimos 30 días
-                  </h3>
-                  <BarChart
-                    data={analytics.visits.map((v: any) => ({
-                      date: v.day,
-                      count: Number(v.visits),
-                    }))}
-                  />
-                </div>
+                {/* Visitas */}
+                {trafficRange === 1 ? (
+                  <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                    <h3 className="mb-3 text-sm font-medium text-white/80">Visitas hoy</h3>
+                    <div className="text-3xl font-semibold">
+                      {analytics.visits.reduce(
+                        (acc: number, v: any) => acc + Number(v.visits),
+                        0
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                    <h3 className="mb-4 text-sm font-medium text-white/80">
+                      Visitas ({trafficRange === 3650 ? 'todo' : `últimos ${trafficRange} días`})
+                    </h3>
+                    <BarChart
+                      data={analytics.visits.map((v: any) => ({
+                        date: v.day,
+                        count: Number(v.visits),
+                      }))}
+                    />
+                  </div>
+                )}
 
                 <div className="rounded-lg border border-white/10 bg-white/5 p-4">
                   <h3 className="mb-3 text-sm font-medium text-white/80">
