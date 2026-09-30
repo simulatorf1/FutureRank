@@ -9,10 +9,7 @@ export function Tracker() {
 
   useEffect(() => {
     async function track() {
-      // Evitar trackear rutas internas del admin
       if (pathname.startsWith('/admin')) return
-
-      // Evitar trackear en desarrollo
       if (process.env.NODE_ENV !== 'production') return
 
       try {
@@ -26,10 +23,11 @@ export function Tracker() {
             path: pathname,
             referrer: document.referrer || null,
             userId: session?.user?.id ?? null,
+            isAnonymous: session?.user?.is_anonymous ?? true,
           }),
         })
       } catch {
-        // Silencioso
+        // silencioso
       }
     }
     track()
