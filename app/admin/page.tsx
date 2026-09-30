@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
-import { getAnalytics } from './actions'
 import {
   closeQuestion,
   reopenQuestion,
@@ -14,6 +13,7 @@ import {
   saveAd,
   toggleAd,
   getAdminStats,
+  getAnalytics,
 } from './actions'
 
 type AdminQuestion = {
@@ -49,10 +49,8 @@ const AD_SLOTS = ['home_sidebar', 'home_bottom', 'question_sidebar', 'question_b
 export default function AdminPage() {
   const [password, setPassword] = useState('')
   const [authed, setAuthed] = useState(false)
-
   const [view, setView] = useState<'questions' | 'ads' | 'stats' | 'traffic'>('questions')
-  const [analytics, setAnalytics] = useState<any>(null)
-  const [loadingAnalytics, setLoadingAnalytics] = useState(false)
+
   const [questions, setQuestions] = useState<AdminQuestion[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [ads, setAds] = useState<Ad[]>([])
@@ -62,6 +60,9 @@ export default function AdminPage() {
 
   const [stats, setStats] = useState<any>(null)
   const [loadingStats, setLoadingStats] = useState(false)
+
+  const [analytics, setAnalytics] = useState<any>(null)
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false)
 
   const loadAll = async () => {
     const supabase = createClient()
@@ -95,14 +96,7 @@ export default function AdminPage() {
     setCategories(cRes.data ?? [])
     setAds(aRes.data ?? [])
   }
-  useEffect(() => {
-    if (view !== 'traffic' || !authed) return
-    setLoadingAnalytics(true)
-    getAnalytics().then((a) => {
-      setAnalytics(a)
-      setLoadingAnalytics(false)
-    })
-  }, [view, authed])
+
   useEffect(() => {
     if (authed) loadAll()
   }, [authed])
@@ -113,6 +107,15 @@ export default function AdminPage() {
     getAdminStats().then((s) => {
       setStats(s)
       setLoadingStats(false)
+    })
+  }, [view, authed])
+
+  useEffect(() => {
+    if (view !== 'traffic' || !authed) return
+    setLoadingAnalytics(true)
+    getAnalytics().then((a) => {
+      setAnalytics(a)
+      setLoadingAnalytics(false)
     })
   }, [view, authed])
 
@@ -181,13 +184,11 @@ export default function AdminPage() {
         )}
 
         {/* Selector de vista */}
-        <div className="mb-6 flex gap-2 border-b border-white/10 pb-3">
+        <div className="mb-6 flex flex-wrap gap-2 border-b border-white/10 pb-3">
           <button
             onClick={() => setView('questions')}
             className={`rounded-md px-3 py-1.5 text-sm ${
-              view === 'questions'
-                ? 'bg-white/10 text-white'
-                : 'text-white/40 hover:text-white'
+              view === 'questions' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white'
             }`}
           >
             Preguntas
@@ -199,7 +200,14 @@ export default function AdminPage() {
             }`}
           >
             Anuncios
-            
+          </button>
+          <button
+            onClick={() => setView('stats')}
+            className={`rounded-md px-3 py-1.5 text-sm ${
+              view === 'stats' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white'
+            }`}
+          >
+            Estadísticas
           </button>
           <button
             onClick={() => setView('traffic')}
@@ -208,14 +216,6 @@ export default function AdminPage() {
             }`}
           >
             Tráfico
-          </button>          
-          <button
-            onClick={() => setView('stats')}
-            className={`rounded-md px-3 py-1.5 text-sm ${
-              view === 'stats' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white'
-            }`}
-          >
-            Estadísticas
           </button>
         </div>
 
@@ -239,10 +239,7 @@ export default function AdminPage() {
 
             <div className="space-y-4">
               {filtered.map((q) => (
-                <div
-                  key={q.id}
-                  className="rounded-lg border border-white/10 bg-white/5 p-4"
-                >
+                <div key={q.id} className="rounded-lg border border-white/10 bg-white/5 p-4">
                   <div className="mb-3 flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="mb-1 flex items-center gap-2 text-xs">
@@ -428,10 +425,7 @@ export default function AdminPage() {
             {AD_SLOTS.map((slot) => {
               const current = findAd(slot)
               return (
-                <div
-                  key={slot}
-                  className="rounded-lg border border-white/10 bg-white/5 p-4"
-                >
+                <div key={slot} className="rounded-lg border border-white/10 bg-white/5 p-4">
                   <div className="mb-3 flex items-center justify-between">
                     <h3 className="text-sm font-medium">
                       Slot: <span className="text-white/50">{slot}</span>
@@ -532,25 +526,6 @@ export default function AdminPage() {
                       <div className="text-2xl font-semibold text-white/60">
                         {stats.votesYesterday}
                       </div>
-                      {stats.votesYesterday > 0 && (
-                        <div
-                          className={`mt-1 text-xs ${
-                            stats.votesToday >= stats.votesYesterday
-                              ? 'text-green-400'
-                              : 'text-red-400'
-                          }`}
-                        >
-                          {stats.votesToday >= stats.votesYesterday ? '▲' : '▼'}{' '}
-                          {Math.abs(
-                            Math.round(
-                              ((stats.votesToday - stats.votesYesterday) /
-                                stats.votesYesterday) *
-                                100
-                            )
-                          )}
-                          %
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -563,25 +538,15 @@ export default function AdminPage() {
                 </div>
 
                 <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-                  <h3 className="mb-4 text-sm font-medium text-white/80">
-                    Usuarios nuevos últimos 7 días
-                  </h3>
-                  <BarChart data={stats.usersByDay} />
-                </div>
-
-                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
                   <h3 className="mb-3 text-sm font-medium text-white/80">
-                    Preguntas más votadas (7 días)
+                    Preguntas más votadas
                   </h3>
                   <div className="space-y-2">
                     {stats.topQuestions.length === 0 ? (
                       <p className="text-xs text-white/40">Sin datos aún.</p>
                     ) : (
                       stats.topQuestions.map((q: any, i: number) => (
-                        <div
-                          key={q.id}
-                          className="flex items-center justify-between text-sm"
-                        >
+                        <div key={q.id} className="flex items-center justify-between text-sm">
                           <span className="flex items-center gap-2 text-white/70">
                             <span className="w-5 text-center text-xs text-white/40">
                               #{i + 1}
@@ -597,17 +562,14 @@ export default function AdminPage() {
 
                 <div className="rounded-lg border border-white/10 bg-white/5 p-4">
                   <h3 className="mb-3 text-sm font-medium text-white/80">
-                    Categorías más activas (7 días)
+                    Categorías más activas
                   </h3>
                   <div className="space-y-2">
                     {stats.topCategories.length === 0 ? (
                       <p className="text-xs text-white/40">Sin datos aún.</p>
                     ) : (
                       stats.topCategories.map((c: any, i: number) => (
-                        <div
-                          key={c.name}
-                          className="flex items-center justify-between text-sm"
-                        >
+                        <div key={c.name} className="flex items-center justify-between text-sm">
                           <span className="flex items-center gap-2 text-white/70">
                             <span className="w-5 text-center text-xs text-white/40">
                               #{i + 1}
@@ -624,6 +586,7 @@ export default function AdminPage() {
             )}
           </div>
         )}
+
         {view === 'traffic' && (
           <div className="space-y-8">
             {loadingAnalytics || !analytics ? (
@@ -648,21 +611,16 @@ export default function AdminPage() {
 
                 <div className="rounded-lg border border-white/10 bg-white/5 p-4">
                   <h3 className="mb-3 text-sm font-medium text-white/80">
-                    Fuentes de tráfico (30 días)
+                    Fuentes de tráfico
                   </h3>
                   <div className="space-y-2">
                     {analytics.sources.length === 0 ? (
                       <p className="text-xs text-white/40">Sin datos aún.</p>
                     ) : (
                       analytics.sources.map((s: any) => (
-                        <div
-                          key={s.source}
-                          className="flex items-center justify-between text-sm"
-                        >
+                        <div key={s.source} className="flex items-center justify-between text-sm">
                           <span className="text-white/70">{s.source}</span>
-                          <span className="text-xs text-white/40">
-                            {s.visits} visitas
-                          </span>
+                          <span className="text-xs text-white/40">{s.visits} visitas</span>
                         </div>
                       ))
                     )}
@@ -678,19 +636,14 @@ export default function AdminPage() {
                       <p className="text-xs text-white/40">Sin datos aún.</p>
                     ) : (
                       analytics.pages.map((p: any, i: number) => (
-                        <div
-                          key={p.path}
-                          className="flex items-center justify-between text-sm"
-                        >
+                        <div key={p.path} className="flex items-center justify-between text-sm">
                           <span className="flex items-center gap-2 text-white/70">
                             <span className="w-5 text-center text-xs text-white/40">
                               #{i + 1}
                             </span>
                             <code className="text-xs">{p.path}</code>
                           </span>
-                          <span className="text-xs text-white/40">
-                            {p.visits}
-                          </span>
+                          <span className="text-xs text-white/40">{p.visits}</span>
                         </div>
                       ))
                     )}
@@ -698,9 +651,7 @@ export default function AdminPage() {
                 </div>
 
                 <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-                  <h3 className="mb-3 text-sm font-medium text-white/80">
-                    Retención (30 días)
-                  </h3>
+                  <h3 className="mb-3 text-sm font-medium text-white/80">Retención</h3>
                   <div className="grid gap-3 sm:grid-cols-3">
                     {analytics.retention.map((r: any) => (
                       <div key={r.metric}>
@@ -710,11 +661,65 @@ export default function AdminPage() {
                     ))}
                   </div>
                 </div>
+
+                {/* Ciudades */}
+                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <h3 className="mb-3 text-sm font-medium text-white/80">Ciudades</h3>
+                  <div className="space-y-2">
+                    {analytics.cities?.length === 0 ? (
+                      <p className="text-xs text-white/40">Sin datos aún.</p>
+                    ) : (
+                      analytics.cities?.map((c: any, i: number) => (
+                        <div key={i} className="flex items-center justify-between text-sm">
+                          <span className="text-white/70">
+                            {c.city}, {c.country}
+                          </span>
+                          <span className="text-xs text-white/40">{c.visits}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Dispositivos */}
+                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <h3 className="mb-3 text-sm font-medium text-white/80">Dispositivos</h3>
+                  <div className="space-y-2">
+                    {analytics.devices?.length === 0 ? (
+                      <p className="text-xs text-white/40">Sin datos aún.</p>
+                    ) : (
+                      analytics.devices?.map((d: any) => (
+                        <div key={d.device} className="flex items-center justify-between text-sm">
+                          <span className="text-white/70">{d.device}</span>
+                          <span className="text-xs text-white/40">{d.visits}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Tipo de visitante */}
+                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <h3 className="mb-3 text-sm font-medium text-white/80">
+                    Tipo de visitante
+                  </h3>
+                  <div className="space-y-2">
+                    {analytics.visitors?.length === 0 ? (
+                      <p className="text-xs text-white/40">Sin datos aún.</p>
+                    ) : (
+                      analytics.visitors?.map((v: any) => (
+                        <div key={v.tipo} className="flex items-center justify-between text-sm">
+                          <span className="text-white/70">{v.tipo}</span>
+                          <span className="text-xs text-white/40">{v.visits}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
               </>
             )}
           </div>
         )}
-        
       </main>
       <Footer />
     </>
@@ -731,6 +736,10 @@ function StatCard({ label, value }: { label: string; value: number }) {
 }
 
 function BarChart({ data }: { data: { date: string; count: number }[] }) {
+  if (!data || data.length === 0) {
+    return <p className="text-xs text-white/40">Sin datos aún.</p>
+  }
+
   const max = Math.max(...data.map((d) => d.count), 1)
 
   return (
