@@ -180,11 +180,15 @@ export async function toggleAd(formData: FormData) {
   return { success: true }
 }
 // ---- Estadísticas del panel ----
-export async function getAdminStats() {
+export async function getAdminStats(days: number = 30) {
   const supabase = getAdminClient()
 
   const now = new Date()
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+  const since =
+    days <= 1
+      ? new Date(now.getFullYear(), now.getMonth(), now().getDate()).toISOString()
+      : new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString()
+
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
   const yesterdayStart = new Date(
     now.getFullYear(),
@@ -192,64 +196,52 @@ export async function getAdminStats() {
     now.getDate() - 1
   ).toISOString()
 
-  const [
-    qTotal,
-    vTotal,
-    uTotal,
-    cTotal,
-    votesByDay,
-    usersByDay,
-    topQuestions,
-    topCategories,
-    votesToday,
-    votesYesterday,
-  ] = await Promise.all([
-    supabase.from('questions').select('id', { count: 'exact', head: true }),
-    supabase.from('votes').select('id', { count: 'exact', head: true }),
-    supabase.from('profiles').select('id', { count: 'exact', head: true }),
-    supabase.from('comments').select('id', { count: 'exact', head: true }),
+  const [qTotal, vTotal, uTotal, cTotal, votesByDay, usersByDay, topQuestions, topCategories, votesToday, votesYesterday] =
+    await Promise.all([
+      supabase.from('questions').select('id', { count: 'exact', head: true }),
+      supabase
+        .from('votes')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', since),
+      supabase
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', since),
+      supabase
+        .from('comments')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', since),
+      supabase.from('votes').select('created_at').gte('created_at', since),
+      supabase.from('profiles').select('created_at').gte('created_at', since),
+      supabase
+        .from('votes')
+        .select('question_id, questions!votes_question_id_fkey(title)')
+        .gte('created_at', since),
+      supabase
+        .from('votes')
+        .select(`
+          question_id,
+          questions!votes_question_id_fkey(
+            category_id,
+            categories!questions_category_id_fkey(name)
+          )
+        `)
+        .gte('created_at', since),
+      supabase
+        .from('votes')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', todayStart),
+      supabase
+        .from('votes')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', yesterdayStart)
+        .lt('created_at', todayStart),
+    ])
 
-    supabase
-      .from('votes')
-      .select('created_at')
-      .gte('created_at', sevenDaysAgo.toISOString()),
+  const daysToShow = days > 30 ? 30 : days
 
-    supabase
-      .from('profiles')
-      .select('created_at')
-      .gte('created_at', sevenDaysAgo.toISOString()),
-
-    supabase
-      .from('votes')
-      .select('question_id, questions!votes_question_id_fkey(title)')
-      .gte('created_at', sevenDaysAgo.toISOString()),
-
-    supabase
-      .from('votes')
-      .select(`
-        question_id,
-        questions!votes_question_id_fkey(
-          category_id,
-          categories!questions_category_id_fkey(name)
-        )
-      `)
-      .gte('created_at', sevenDaysAgo.toISOString()),
-
-    supabase
-      .from('votes')
-      .select('id', { count: 'exact', head: true })
-      .gte('created_at', todayStart),
-
-    supabase
-      .from('votes')
-      .select('id', { count: 'exact', head: true })
-      .gte('created_at', yesterdayStart)
-      .lt('created_at', todayStart),
-  ])
-
-  // Agrupar votos por día
   const votesByDayMap: Record<string, number> = {}
-  for (let i = 6; i >= 0; i--) {
+  for (let i = daysToShow - 1; i >= 0; i--) {
     const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000)
     const key = d.toISOString().slice(0, 10)
     votesByDayMap[key] = 0
@@ -259,9 +251,8 @@ export async function getAdminStats() {
     if (key in votesByDayMap) votesByDayMap[key]++
   }
 
-  // Agrupar usuarios por día
   const usersByDayMap: Record<string, number> = {}
-  for (let i = 6; i >= 0; i--) {
+  for (let i = daysToShow - 1; i >= 0; i--) {
     const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000)
     const key = d.toISOString().slice(0, 10)
     usersByDayMap[key] = 0
@@ -271,7 +262,6 @@ export async function getAdminStats() {
     if (key in usersByDayMap) usersByDayMap[key]++
   }
 
-  // Top preguntas
   const qCounts: Record<number, { count: number; title: string }> = {}
   for (const v of topQuestions.data ?? []) {
     const qid = v.question_id
@@ -284,7 +274,6 @@ export async function getAdminStats() {
     .sort((a, b) => b.count - a.count)
     .slice(0, 5)
 
-  // Top categorías
   const catCounts: Record<string, number> = {}
   for (const v of topCategories.data ?? []) {
     const name = (v as any).questions?.categories?.name ?? 'Sin categoría'
