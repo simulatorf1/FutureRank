@@ -46,6 +46,8 @@ const STATUS_LABEL: Record<string, string> = {
 
 const AD_SLOTS = ['home_sidebar', 'home_bottom', 'question_sidebar', 'question_bottom']
 
+type SortMode = 'recent' | 'closing' | 'title' | 'status'
+
 export default function AdminPage() {
   const [password, setPassword] = useState('')
   const [authed, setAuthed] = useState(false)
@@ -55,11 +57,13 @@ export default function AdminPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [ads, setAds] = useState<Ad[]>([])
   const [filter, setFilter] = useState<string>('all')
+  const [sortMode, setSortMode] = useState<SortMode>('recent')
   const [message, setMessage] = useState<string | null>(null)
   const [editing, setEditing] = useState<number | null>(null)
 
   const [stats, setStats] = useState<any>(null)
   const [loadingStats, setLoadingStats] = useState(false)
+  const [statsRange, setStatsRange] = useState<number>(30)
 
   const [analytics, setAnalytics] = useState<any>(null)
   const [loadingAnalytics, setLoadingAnalytics] = useState(false)
@@ -82,10 +86,7 @@ export default function AdminPage() {
         .select('id, name, slug')
         .not('parent_id', 'is', null)
         .order('name'),
-      supabase
-        .from('ads')
-        .select('id, slot, content, link_url, is_active')
-        .order('slot'),
+      supabase.from('ads').select('id, slot, content, link_url, is_active').order('slot'),
     ])
 
     setQuestions(
@@ -105,11 +106,11 @@ export default function AdminPage() {
   useEffect(() => {
     if (view !== 'stats' || !authed) return
     setLoadingStats(true)
-    getAdminStats().then((s) => {
+    getAdminStats(statsRange).then((s) => {
       setStats(s)
       setLoadingStats(false)
     })
-  }, [view, authed])
+  }, [view, authed, statsRange])
 
   useEffect(() => {
     if (view !== 'traffic' || !authed) return
@@ -167,8 +168,21 @@ export default function AdminPage() {
     )
   }
 
-  const filtered =
-    filter === 'all' ? questions : questions.filter((q) => q.status === filter)
+  const filtered = questions.filter((q) => (filter === 'all' ? true : q.status === filter))
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortMode === 'closing') {
+      return new Date(a.resolution_date).getTime() - new Date(b.resolution_date).getTime()
+    }
+    if (sortMode === 'title') {
+      return a.title.localeCompare(b.title)
+    }
+    if (sortMode === 'status') {
+      const order = { open: 0, closed: 1, resolved: 2 } as Record<string, number>
+      return (order[a.status] ?? 3) - (order[b.status] ?? 3)
+    }
+    return b.id - a.id
+  })
 
   const findAd = (slot: string) => ads.find((a) => a.slot === slot) ?? null
 
@@ -184,45 +198,28 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Selector de vista */}
         <div className="mb-6 flex flex-wrap gap-2 border-b border-white/10 pb-3">
-          <button
-            onClick={() => setView('questions')}
-            className={`rounded-md px-3 py-1.5 text-sm ${
-              view === 'questions' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white'
-            }`}
-          >
-            Preguntas
-          </button>
-          <button
-            onClick={() => setView('ads')}
-            className={`rounded-md px-3 py-1.5 text-sm ${
-              view === 'ads' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white'
-            }`}
-          >
-            Anuncios
-          </button>
-          <button
-            onClick={() => setView('stats')}
-            className={`rounded-md px-3 py-1.5 text-sm ${
-              view === 'stats' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white'
-            }`}
-          >
-            Estadísticas
-          </button>
-          <button
-            onClick={() => setView('traffic')}
-            className={`rounded-md px-3 py-1.5 text-sm ${
-              view === 'traffic' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white'
-            }`}
-          >
-            Tráfico
-          </button>
+          {[
+            { key: 'questions', label: 'Preguntas' },
+            { key: 'ads', label: 'Anuncios' },
+            { key: 'stats', label: 'Estadísticas' },
+            { key: 'traffic', label: 'Tráfico' },
+          ].map((v) => (
+            <button
+              key={v.key}
+              onClick={() => setView(v.key as any)}
+              className={`rounded-md px-3 py-1.5 text-sm ${
+                view === v.key ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white'
+              }`}
+            >
+              {v.label}
+            </button>
+          ))}
         </div>
 
         {view === 'questions' && (
           <>
-            <div className="mb-6 flex flex-wrap gap-2">
+            <div className="mb-4 flex flex-wrap gap-2">
               {['all', 'open', 'closed', 'resolved'].map((f) => (
                 <button
                   key={f}
@@ -238,8 +235,30 @@ export default function AdminPage() {
               ))}
             </div>
 
+            <div className="mb-6 flex flex-wrap items-center gap-2">
+              <span className="text-xs text-white/40">Ordenar por:</span>
+              {[
+                { key: 'recent', label: 'Más recientes' },
+                { key: 'closing', label: 'Próximas a cerrar' },
+                { key: 'title', label: 'Alfabético' },
+                { key: 'status', label: 'Estado' },
+              ].map((s) => (
+                <button
+                  key={s.key}
+                  onClick={() => setSortMode(s.key as SortMode)}
+                  className={`rounded-full px-3 py-1 text-xs transition ${
+                    sortMode === s.key
+                      ? 'bg-white/20 text-white'
+                      : 'text-white/40 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+
             <div className="space-y-4">
-              {filtered.map((q) => (
+              {sorted.map((q) => (
                 <div key={q.id} className="rounded-lg border border-white/10 bg-white/5 p-4">
                   <div className="mb-3 flex items-start justify-between gap-4">
                     <div className="flex-1">
@@ -409,7 +428,7 @@ export default function AdminPage() {
                 </div>
               ))}
 
-              {filtered.length === 0 && (
+              {sorted.length === 0 && (
                 <p className="text-sm text-white/40">No hay preguntas con este filtro.</p>
               )}
             </div>
@@ -419,8 +438,7 @@ export default function AdminPage() {
         {view === 'ads' && (
           <div className="space-y-6">
             <p className="text-sm text-white/60">
-              Configura el contenido que aparece en cada hueco publicitario. Si dejas un
-              slot vacío, no se muestra nada en la web.
+              Configura el contenido que aparece en cada hueco publicitario.
             </p>
 
             {AD_SLOTS.map((slot) => {
@@ -498,6 +516,27 @@ export default function AdminPage() {
 
         {view === 'stats' && (
           <div className="space-y-8">
+            <div className="flex flex-wrap gap-2">
+              {[
+                { label: 'Hoy', value: 1 },
+                { label: 'Últimos 7 días', value: 7 },
+                { label: 'Últimos 30 días', value: 30 },
+                { label: 'Todo', value: 3650 },
+              ].map((r) => (
+                <button
+                  key={r.value}
+                  onClick={() => setStatsRange(r.value)}
+                  className={`rounded-full px-4 py-1.5 text-sm transition ${
+                    statsRange === r.value
+                      ? 'bg-white text-black'
+                      : 'border border-white/10 bg-white/5 text-white/60 hover:bg-white/10'
+                  }`}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+
             {loadingStats || !stats ? (
               <div className="grid gap-3 sm:grid-cols-4">
                 {[1, 2, 3, 4].map((i) => (
@@ -514,9 +553,7 @@ export default function AdminPage() {
                 </div>
 
                 <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-                  <h3 className="mb-3 text-sm font-medium text-white/80">
-                    Actividad de votos
-                  </h3>
+                  <h3 className="mb-3 text-sm font-medium text-white/80">Actividad de votos</h3>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <div className="text-xs text-white/40">Hoy</div>
@@ -531,12 +568,14 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-                  <h3 className="mb-4 text-sm font-medium text-white/80">
-                    Votos últimos 7 días
-                  </h3>
-                  <BarChart data={stats.votesByDay} />
-                </div>
+                {statsRange > 1 && (
+                  <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                    <h3 className="mb-4 text-sm font-medium text-white/80">
+                      Votos por día
+                    </h3>
+                    <BarChart data={stats.votesByDay} />
+                  </div>
+                )}
 
                 <div className="rounded-lg border border-white/10 bg-white/5 p-4">
                   <h3 className="mb-3 text-sm font-medium text-white/80">
@@ -590,7 +629,6 @@ export default function AdminPage() {
 
         {view === 'traffic' && (
           <div className="space-y-8">
-            {/* Selector de rango */}
             <div className="flex flex-wrap gap-2">
               {[
                 { label: 'Hoy', value: 1 },
@@ -620,7 +658,6 @@ export default function AdminPage() {
               </div>
             ) : (
               <>
-                {/* Visitas */}
                 {trafficRange === 1 ? (
                   <div className="rounded-lg border border-white/10 bg-white/5 p-4">
                     <h3 className="mb-3 text-sm font-medium text-white/80">Visitas hoy</h3>
@@ -633,9 +670,7 @@ export default function AdminPage() {
                   </div>
                 ) : (
                   <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-                    <h3 className="mb-4 text-sm font-medium text-white/80">
-                      Visitas ({trafficRange === 3650 ? 'todo' : `últimos ${trafficRange} días`})
-                    </h3>
+                    <h3 className="mb-4 text-sm font-medium text-white/80">Visitas</h3>
                     <BarChart
                       data={analytics.visits.map((v: any) => ({
                         date: v.day,
@@ -647,16 +682,16 @@ export default function AdminPage() {
 
                 <div className="rounded-lg border border-white/10 bg-white/5 p-4">
                   <h3 className="mb-3 text-sm font-medium text-white/80">
-                    Fuentes de tráfico
+                    Usuarios únicos
                   </h3>
                   <div className="space-y-2">
-                    {analytics.sources.length === 0 ? (
+                    {analytics.uniques?.length === 0 ? (
                       <p className="text-xs text-white/40">Sin datos aún.</p>
                     ) : (
-                      analytics.sources.map((s: any) => (
-                        <div key={s.source} className="flex items-center justify-between text-sm">
-                          <span className="text-white/70">{s.source}</span>
-                          <span className="text-xs text-white/40">{s.visits} visitas</span>
+                      analytics.uniques?.map((u: any) => (
+                        <div key={u.dia} className="flex items-center justify-between text-sm">
+                          <span className="text-white/70">{u.dia}</span>
+                          <span className="text-xs text-white/40">{u.unicos} únicos</span>
                         </div>
                       ))
                     )}
@@ -664,92 +699,54 @@ export default function AdminPage() {
                 </div>
 
                 <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-                  <h3 className="mb-3 text-sm font-medium text-white/80">
-                    Páginas más visitadas
-                  </h3>
+                  <h3 className="mb-3 text-sm font-medium text-white/80">Fuentes de tráfico</h3>
                   <div className="space-y-2">
-                    {analytics.pages.length === 0 ? (
-                      <p className="text-xs text-white/40">Sin datos aún.</p>
-                    ) : (
-                      analytics.pages.map((p: any, i: number) => (
-                        <div key={p.path} className="flex items-center justify-between text-sm">
-                          <span className="flex items-center gap-2 text-white/70">
-                            <span className="w-5 text-center text-xs text-white/40">
-                              #{i + 1}
-                            </span>
-                            <code className="text-xs">{p.path}</code>
-                          </span>
-                          <span className="text-xs text-white/40">{p.visits}</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-                  <h3 className="mb-3 text-sm font-medium text-white/80">Retención</h3>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    {analytics.retention.map((r: any) => (
-                      <div key={r.metric}>
-                        <div className="text-xs text-white/40">{r.metric}</div>
-                        <div className="text-2xl font-semibold">{r.value}</div>
+                    {analytics.sources.map((s: any) => (
+                      <div key={s.source} className="flex items-center justify-between text-sm">
+                        <span className="text-white/70">{s.source}</span>
+                        <span className="text-xs text-white/40">{s.visits} visitas</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* Ciudades */}
                 <div className="rounded-lg border border-white/10 bg-white/5 p-4">
                   <h3 className="mb-3 text-sm font-medium text-white/80">Ciudades</h3>
                   <div className="space-y-2">
-                    {analytics.cities?.length === 0 ? (
-                      <p className="text-xs text-white/40">Sin datos aún.</p>
-                    ) : (
-                      analytics.cities?.map((c: any, i: number) => (
-                        <div key={i} className="flex items-center justify-between text-sm">
-                          <span className="text-white/70">
-                            {c.city}, {c.country}
-                          </span>
-                          <span className="text-xs text-white/40">{c.visits}</span>
-                        </div>
-                      ))
-                    )}
+                    {analytics.cities?.map((c: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between text-sm">
+                        <span className="text-white/70">
+                          {c.city}, {c.country}
+                        </span>
+                        <span className="text-xs text-white/40">{c.visits}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                {/* Dispositivos */}
                 <div className="rounded-lg border border-white/10 bg-white/5 p-4">
                   <h3 className="mb-3 text-sm font-medium text-white/80">Dispositivos</h3>
                   <div className="space-y-2">
-                    {analytics.devices?.length === 0 ? (
-                      <p className="text-xs text-white/40">Sin datos aún.</p>
-                    ) : (
-                      analytics.devices?.map((d: any) => (
-                        <div key={d.device} className="flex items-center justify-between text-sm">
-                          <span className="text-white/70">{d.device}</span>
-                          <span className="text-xs text-white/40">{d.visits}</span>
-                        </div>
-                      ))
-                    )}
+                    {analytics.devices?.map((d: any) => (
+                      <div key={d.device} className="flex items-center justify-between text-sm">
+                        <span className="text-white/70">{d.device}</span>
+                        <span className="text-xs text-white/40">{d.visits}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                {/* Tipo de visitante */}
                 <div className="rounded-lg border border-white/10 bg-white/5 p-4">
                   <h3 className="mb-3 text-sm font-medium text-white/80">
                     Tipo de visitante
                   </h3>
                   <div className="space-y-2">
-                    {analytics.visitors?.length === 0 ? (
-                      <p className="text-xs text-white/40">Sin datos aún.</p>
-                    ) : (
-                      analytics.visitors?.map((v: any) => (
-                        <div key={v.tipo} className="flex items-center justify-between text-sm">
-                          <span className="text-white/70">{v.tipo}</span>
-                          <span className="text-xs text-white/40">{v.visits}</span>
-                        </div>
-                      ))
-                    )}
+                    {analytics.visitors?.map((v: any) => (
+                      <div key={v.tipo} className="flex items-center justify-between text-sm">
+                        <span className="text-white/70">{v.tipo}</span>
+                        <span className="text-xs text-white/40">{v.visits}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </>
