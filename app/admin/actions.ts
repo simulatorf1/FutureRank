@@ -198,7 +198,10 @@ export async function getAdminStats(days: number = 30) {
 
   const [qTotal, vTotal, uTotal, cTotal, votesByDay, usersByDay, topQuestions, topCategories, votesToday, votesYesterday] =
     await Promise.all([
-      supabase.from('questions').select('id', { count: 'exact', head: true }),
+      supabase
+        .from('questions')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', since),
       supabase
         .from('votes')
         .select('id', { count: 'exact', head: true })
