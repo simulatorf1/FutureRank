@@ -546,10 +546,19 @@ export default function AdminPage() {
             ) : (
               <>
                 <div className="grid gap-3 sm:grid-cols-4">
-                  <StatCard label="Preguntas" value={stats.totals.questions} />
-                  <StatCard label="Votos" value={stats.totals.votes} />
-                  <StatCard label="Usuarios" value={stats.totals.users} />
-                  <StatCard label="Comentarios" value={stats.totals.comments} />
+                  <StatCard label="Preguntas (total)" value={stats.totals.questions} />
+                  <StatCard
+                    label={`Votos ${statsRange === 1 ? 'hoy' : statsRange === 3650 ? 'totales' : `últimos ${statsRange} días`}`}
+                    value={stats.totals.votes}
+                  />
+                  <StatCard
+                    label={`Usuarios ${statsRange === 1 ? 'hoy' : statsRange === 3650 ? 'totales' : `últimos ${statsRange} días`}`}
+                    value={stats.totals.users}
+                  />
+                  <StatCard
+                    label={`Comentarios ${statsRange === 1 ? 'hoy' : statsRange === 3650 ? 'totales' : `últimos ${statsRange} días`}`}
+                    value={stats.totals.comments}
+                  />
                 </div>
 
                 <div className="rounded-lg border border-white/10 bg-white/5 p-4">
