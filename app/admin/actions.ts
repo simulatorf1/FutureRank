@@ -186,7 +186,7 @@ export async function getAdminStats(days: number = 30) {
   const now = new Date()
   const since =
     days <= 1
-      ? new Date(now.getFullYear(), now.getMonth(), now().getDate()).toISOString()
+      ? new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
       : new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString()
 
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
